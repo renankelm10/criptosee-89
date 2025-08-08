@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { supabase } from "@/integrations/supabase/client";
 
 interface CryptoData {
   id: string;
@@ -295,6 +296,68 @@ export const useCrypto = () => {
     return Array.from(seen.values());
   };
 
+  // Integração com Supabase: busca os dados do banco primeiro
+  const fetchFromSupabase = async (): Promise<{ cryptos: CryptoData[]; globalData: GlobalData | null } | null> => {
+    const { data: markets, error: mErr } = await supabase
+      .from('latest_markets')
+      .select('*')
+      .order('market_cap_rank', { ascending: true })
+      .limit(300);
+    if (mErr) {
+      console.warn('⚠️ Supabase latest_markets erro:', mErr.message);
+      return null;
+    }
+    if (!markets || markets.length === 0) return null;
+
+    const ids = markets.map((m: any) => m.coin_id);
+    const { data: coins, error: cErr } = await supabase
+      .from('coins')
+      .select('id, symbol, name, image')
+      .in('id', ids);
+    if (cErr) {
+      console.warn('⚠️ Supabase coins erro:', cErr.message);
+      return null;
+    }
+
+    const coinMap = new Map((coins || []).map((c: any) => [c.id, c]));
+
+    const merged: CryptoData[] = markets.map((m: any) => {
+      const c = coinMap.get(m.coin_id);
+      return {
+        id: m.coin_id,
+        name: c?.name || m.coin_id,
+        symbol: (c?.symbol || '').toLowerCase(),
+        current_price: Number(m.price) || 0,
+        price_change_percentage_24h: Number(m.price_change_percentage_24h) || 0,
+        price_change_percentage_1h_in_currency: Number(m.price_change_percentage_1h) || 0,
+        market_cap_rank: Number(m.market_cap_rank) || 0,
+        image: c?.image || '',
+        market_cap: Number(m.market_cap) || 0,
+        total_volume: Number(m.volume_24h) || 0,
+      } as CryptoData;
+    });
+
+    const totalMarketCap = merged.reduce((acc, x) => acc + (x.market_cap || 0), 0);
+    const totalVolume = merged.reduce((acc, x) => acc + (x.total_volume || 0), 0);
+    const btc = merged.find(x => x.id === 'bitcoin');
+    const dominance = btc && totalMarketCap > 0 ? (btc.market_cap / totalMarketCap) * 100 : 0;
+
+    const finalData = removeDuplicates(merged).sort((a, b) => {
+      const aVol = Math.abs(a.price_change_percentage_24h);
+      const bVol = Math.abs(b.price_change_percentage_24h);
+      return bVol - aVol;
+    });
+
+    const global: GlobalData = {
+      total_market_cap: { usd: totalMarketCap },
+      total_volume: { usd: totalVolume },
+      active_cryptocurrencies: merged.length,
+      market_cap_percentage: { btc: dominance },
+    };
+
+    return { cryptos: finalData, globalData: global };
+  };
+
   // Função para buscar dados sem atualizar UI (armazenar em buffer)
   const fetchDataToBuffer = async () => {
     if (isFetchingRef.current) {
@@ -312,6 +375,19 @@ export const useCrypto = () => {
       let cryptoData: CryptoData[] = [];
       let apiUsed = '';
       let originalCount = 0;
+
+      // Tentar Supabase primeiro
+      try {
+        const sup = await fetchFromSupabase();
+        if (sup) {
+          pendingDataRef.current = { cryptos: sup.cryptos, globalData: sup.globalData };
+          saveToCache(sup.cryptos, sup.globalData);
+          console.log('✅ Supabase funcionou! Dados carregados do banco');
+          return;
+        }
+      } catch (supErr) {
+        console.warn('⚠️ Supabase indisponível, usando APIs externas...', supErr);
+      }
 
       // Estratégia 1: Priorizar CoinCap como fonte principal (750 moedas)
       try {
@@ -509,9 +585,17 @@ export const useCrypto = () => {
     loading,
     error,
     isUpdating,
-    refetch: () => {
-      if (!isFetchingRef.current) {
-        fetchDataToBuffer();
+    refetch: async () => {
+      if (isFetchingRef.current) return;
+      try {
+        setIsUpdating(true);
+        await supabase.functions.invoke('refresh-markets', { body: { pages: 2, per_page: 200 } });
+      } catch (e) {
+        console.warn('⚠️ Falha ao invocar refresh-markets:', e);
+      } finally {
+        await fetchDataToBuffer();
+        updateUIFromBuffer();
+        setIsUpdating(false);
       }
     }
   };

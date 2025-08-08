@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      coins: {
+        Row: {
+          created_at: string
+          id: string
+          image: string | null
+          name: string
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          image?: string | null
+          name: string
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image?: string | null
+          name?: string
+          symbol?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_notifications: {
         Row: {
           created_at: string
@@ -37,6 +64,121 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      latest_markets: {
+        Row: {
+          ath: number | null
+          ath_change_percentage: number | null
+          ath_date: string | null
+          atl: number | null
+          atl_change_percentage: number | null
+          atl_date: string | null
+          circulating_supply: number | null
+          coin_id: string
+          market_cap: number | null
+          market_cap_rank: number | null
+          max_supply: number | null
+          price: number
+          price_change_percentage_1h: number | null
+          price_change_percentage_24h: number | null
+          price_change_percentage_7d: number | null
+          total_supply: number | null
+          updated_at: string
+          volume_24h: number | null
+        }
+        Insert: {
+          ath?: number | null
+          ath_change_percentage?: number | null
+          ath_date?: string | null
+          atl?: number | null
+          atl_change_percentage?: number | null
+          atl_date?: string | null
+          circulating_supply?: number | null
+          coin_id: string
+          market_cap?: number | null
+          market_cap_rank?: number | null
+          max_supply?: number | null
+          price: number
+          price_change_percentage_1h?: number | null
+          price_change_percentage_24h?: number | null
+          price_change_percentage_7d?: number | null
+          total_supply?: number | null
+          updated_at?: string
+          volume_24h?: number | null
+        }
+        Update: {
+          ath?: number | null
+          ath_change_percentage?: number | null
+          ath_date?: string | null
+          atl?: number | null
+          atl_change_percentage?: number | null
+          atl_date?: string | null
+          circulating_supply?: number | null
+          coin_id?: string
+          market_cap?: number | null
+          market_cap_rank?: number | null
+          max_supply?: number | null
+          price?: number
+          price_change_percentage_1h?: number | null
+          price_change_percentage_24h?: number | null
+          price_change_percentage_7d?: number | null
+          total_supply?: number | null
+          updated_at?: string
+          volume_24h?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "latest_markets_coin_id_fkey"
+            columns: ["coin_id"]
+            isOneToOne: true
+            referencedRelation: "coins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      markets_history: {
+        Row: {
+          coin_id: string
+          id: number
+          market_cap: number | null
+          price: number
+          price_change_percentage_1h: number | null
+          price_change_percentage_24h: number | null
+          price_change_percentage_7d: number | null
+          timestamp: string
+          volume_24h: number | null
+        }
+        Insert: {
+          coin_id: string
+          id?: number
+          market_cap?: number | null
+          price: number
+          price_change_percentage_1h?: number | null
+          price_change_percentage_24h?: number | null
+          price_change_percentage_7d?: number | null
+          timestamp?: string
+          volume_24h?: number | null
+        }
+        Update: {
+          coin_id?: string
+          id?: number
+          market_cap?: number | null
+          price?: number
+          price_change_percentage_1h?: number | null
+          price_change_percentage_24h?: number | null
+          price_change_percentage_7d?: number | null
+          timestamp?: string
+          volume_24h?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "markets_history_coin_id_fkey"
+            columns: ["coin_id"]
+            isOneToOne: false
+            referencedRelation: "coins"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notification_log: {
         Row: {
