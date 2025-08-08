@@ -21,8 +21,7 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 
-# Simple healthcheck
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
-  CMD wget -qO- http://localhost/ || exit 1
+# Healthcheck that doesn't require extra tools and won't kill the service
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD nginx -t || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
