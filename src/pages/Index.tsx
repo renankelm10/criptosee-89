@@ -13,17 +13,24 @@ import { useCountdownTimer } from "@/hooks/useCountdownTimer";
 import { RefreshCw, Search, TrendingUp, Zap, Filter, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SEO } from "@/components/SEO";
-
 const Index = () => {
-  const { cryptos, globalData, loading, error, refetch } = useCrypto();
+  const {
+    cryptos,
+    globalData,
+    loading,
+    error,
+    refetch
+  } = useCrypto();
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState<"all" | "gainers" | "losers" | "volatile">("volatile");
   const [showNotifications, setShowNotifications] = useState(false);
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
 
   // Timer para próxima atualização (5 minutos)
   const countdownTimer = useCountdownTimer({
-    targetDurationMs: 5 * 60 * 1000, // 5 minutos
+    targetDurationMs: 5 * 60 * 1000 // 5 minutos
   });
 
   // Enable volatility notifications
@@ -42,23 +49,17 @@ const Index = () => {
       countdownTimer.start();
     }
   }, [loading]);
-
   const handleRefresh = async () => {
     await refetch();
     toast({
       title: "Dados atualizados!",
-      description: "Os dados das criptomoedas foram atualizados com sucesso.",
+      description: "Os dados das criptomoedas foram atualizados com sucesso."
     });
   };
-
   const filteredCryptos = cryptos.filter(crypto => {
-    const matchesSearch = crypto.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         crypto.symbol.toLowerCase().includes(searchTerm.toLowerCase());
-    
+    const matchesSearch = crypto.name.toLowerCase().includes(searchTerm.toLowerCase()) || crypto.symbol.toLowerCase().includes(searchTerm.toLowerCase());
     if (!matchesSearch) return false;
-
     console.log(`🔍 Filtro ativo: ${filter}, Crypto: ${crypto.name}, Change 24h: ${crypto.price_change_percentage_24h}`);
-
     switch (filter) {
       case "gainers":
         return crypto.price_change_percentage_24h > 0;
@@ -73,12 +74,9 @@ const Index = () => {
         return true;
     }
   });
-
   console.log(`📊 Filtro: ${filter}, Total cryptos: ${cryptos.length}, Filtrados: ${filteredCryptos.length}`);
-
   if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+    return <div className="min-h-screen flex items-center justify-center bg-background">
         <Card className="p-8 text-center max-w-md">
           <div className="text-destructive text-lg font-semibold mb-4">Erro ao carregar dados</div>
           <p className="text-muted-foreground mb-4">{error}</p>
@@ -87,16 +85,10 @@ const Index = () => {
             Tentar novamente
           </Button>
         </Card>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen bg-background">
-      <SEO
-        title="Criptomoedas em Alta e Volatilidade | CryptoVolatil"
-        description="Acompanhe as moedas mais voláteis, preços e volume em tempo real com dados confiáveis via Supabase."
-      />
+  return <div className="min-h-screen bg-background">
+      <SEO title="Criptomoedas em Alta e Volatilidade | CryptoVolatil" description="Acompanhe as moedas mais voláteis, preços e volume em tempo real com dados confiáveis via Supabase." />
       {/* Header */}
       <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="container mx-auto px-4 py-6">
@@ -106,9 +98,7 @@ const Index = () => {
                 <Zap className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                  CryptoVolatil — Criptomoedas em Alta e Volatilidade
-                </h1>
+                <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">CryptoSEE</h1>
                 <p className="text-sm text-muted-foreground">
                   Acompanhe as moedas mais voláteis e em crescimento rápido
                 </p>
@@ -119,30 +109,16 @@ const Index = () => {
               <div className="flex items-center gap-2">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar criptomoeda..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 w-64"
-                  />
+                  <Input placeholder="Buscar criptomoeda..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10 w-64" />
                 </div>
               </div>
               
-              <Button
-                onClick={() => setShowNotifications(!showNotifications)}
-                variant={showNotifications ? "default" : "outline"}
-                className="flex items-center gap-2"
-              >
+              <Button onClick={() => setShowNotifications(!showNotifications)} variant={showNotifications ? "default" : "outline"} className="flex items-center gap-2">
                 <Mail className="w-4 h-4" />
                 Notificações
               </Button>
               
-              <Button
-                onClick={handleRefresh}
-                variant="outline"
-                disabled={loading}
-                className="flex items-center gap-2"
-              >
+              <Button onClick={handleRefresh} variant="outline" disabled={loading} className="flex items-center gap-2">
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                 Atualizar
               </Button>
@@ -155,48 +131,43 @@ const Index = () => {
               <Filter className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium">Filtros:</span>
             </div>
-            {[
-              { key: "volatile", label: "Mais Voláteis", icon: TrendingUp },
-              { key: "gainers", label: "Em Alta", icon: TrendingUp },
-              { key: "losers", label: "Em Baixa", icon: TrendingUp },
-              { key: "all", label: "Todas", icon: null }
-            ].map(({ key, label, icon: Icon }) => (
-              <Button
-                key={key}
-                variant={filter === key ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setFilter(key as any)}
-                className="flex items-center gap-2"
-              >
+            {[{
+            key: "volatile",
+            label: "Mais Voláteis",
+            icon: TrendingUp
+          }, {
+            key: "gainers",
+            label: "Em Alta",
+            icon: TrendingUp
+          }, {
+            key: "losers",
+            label: "Em Baixa",
+            icon: TrendingUp
+          }, {
+            key: "all",
+            label: "Todas",
+            icon: null
+          }].map(({
+            key,
+            label,
+            icon: Icon
+          }) => <Button key={key} variant={filter === key ? "default" : "ghost"} size="sm" onClick={() => setFilter(key as any)} className="flex items-center gap-2">
                 {Icon && <Icon className="w-4 h-4" />}
                 {label}
-              </Button>
-            ))}
+              </Button>)}
           </div>
         </div>
       </div>
 
       {/* Content */}
       <div className="container mx-auto px-4 py-8">
-        {showNotifications && (
-          <div className="mb-8">
+        {showNotifications && <div className="mb-8">
             <EmailNotifications />
-          </div>
-        )}
+          </div>}
 
-        {globalData && (
-          <MarketStats
-            totalMarketCap={globalData.total_market_cap.usd}
-            totalVolume={globalData.total_volume.usd}
-            activeCoins={globalData.active_cryptocurrencies}
-            dominance={globalData.market_cap_percentage.btc}
-          />
-        )}
+        {globalData && <MarketStats totalMarketCap={globalData.total_market_cap.usd} totalVolume={globalData.total_volume.usd} activeCoins={globalData.active_cryptocurrencies} dominance={globalData.market_cap_percentage.btc} />}
 
-        {loading ? (
-          <LoadingSpinner />
-        ) : (
-          <>
+        {loading ? <LoadingSpinner /> : <>
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-foreground">
@@ -223,13 +194,12 @@ const Index = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {filteredCryptos.map((crypto, index) => {
-                console.log(`🎯 Renderizando card: ${crypto.name} (${index})`);
-                return <CryptoCard key={crypto.id} crypto={crypto} index={index} />;
-              })}
+            console.log(`🎯 Renderizando card: ${crypto.name} (${index})`);
+            return <CryptoCard key={crypto.id} crypto={crypto} index={index} />;
+          })}
             </div>
 
-            {filteredCryptos.length === 0 && (
-              <div className="text-center py-12">
+            {filteredCryptos.length === 0 && <div className="text-center py-12">
                 <div className="text-6xl mb-4">🔍</div>
                 <h3 className="text-xl font-semibold text-foreground mb-2">
                   Nenhuma criptomoeda encontrada
@@ -237,13 +207,9 @@ const Index = () => {
                 <p className="text-muted-foreground">
                   Tente ajustar os filtros ou termo de busca
                 </p>
-              </div>
-            )}
-          </>
-        )}
+              </div>}
+          </>}
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
