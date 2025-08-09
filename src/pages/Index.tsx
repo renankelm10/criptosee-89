@@ -98,7 +98,7 @@ const Index = () => {
                 <Zap className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">CryptoSEE</h1>
+                <h1 className="bg-gradient-primary bg-clip-text text-transparent text-3xl font-bold text-left">Crypto.See 👁️👁️</h1>
                 <p className="text-sm text-muted-foreground">
                   Acompanhe as moedas mais voláteis e em crescimento rápido
                 </p>
