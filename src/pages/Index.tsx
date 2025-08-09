@@ -12,6 +12,7 @@ import { useVolatilityNotifier } from "@/hooks/useVolatilityNotifier";
 import { useCountdownTimer } from "@/hooks/useCountdownTimer";
 import { RefreshCw, Search, TrendingUp, Zap, Filter, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { SEO } from "@/components/SEO";
 
 const Index = () => {
   const { cryptos, globalData, loading, error, refetch } = useCrypto();
@@ -92,6 +93,10 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title="Criptomoedas em Alta e Volatilidade | CryptoVolatil"
+        description="Acompanhe as moedas mais voláteis, preços e volume em tempo real com dados confiáveis via Supabase."
+      />
       {/* Header */}
       <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="container mx-auto px-4 py-6">
@@ -102,7 +107,7 @@ const Index = () => {
               </div>
               <div>
                 <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-                  CryptoVolatil
+                  CryptoVolatil — Criptomoedas em Alta e Volatilidade
                 </h1>
                 <p className="text-sm text-muted-foreground">
                   Acompanhe as moedas mais voláteis e em crescimento rápido

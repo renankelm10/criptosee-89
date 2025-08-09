@@ -8,6 +8,7 @@ import { CryptoPriceChart } from "@/components/CryptoPriceChart";
 import { InvestmentCalculator } from "@/components/InvestmentCalculator";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { useToast } from "@/hooks/use-toast";
+import { SEO } from "@/components/SEO";
 
 interface CryptoDetailData {
   id: string;
@@ -170,6 +171,10 @@ const CryptoDetail = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO
+        title={`${crypto.name} (${crypto.symbol.toUpperCase()}) preço, market cap e gráfico | CryptoVolatil`}
+        description={`Veja preço atual, variações (24h/7d/30d) e market cap de ${crypto.name}. Gráficos e estatísticas atualizadas.`}
+      />
       {/* Header */}
       <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="container mx-auto px-4 py-6">
@@ -187,7 +192,8 @@ const CryptoDetail = () => {
             <div className="flex items-center gap-4">
               <img 
                 src={crypto.image.large} 
-                alt={crypto.name}
+                alt={`${crypto.name} logo`}
+                loading="lazy"
                 className="w-12 h-12 rounded-full ring-2 ring-primary/20"
               />
               <div>
