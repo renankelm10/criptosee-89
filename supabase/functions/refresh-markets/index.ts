@@ -30,8 +30,8 @@ serve(async (req: Request) => {
 
   try {
     const url = new URL(req.url);
-    const pages = Math.max(1, Math.min(3, Number(url.searchParams.get("pages") || 1))); // up to 3 pages
-    const perPage = Math.max(50, Math.min(250, Number(url.searchParams.get("per_page") || 200)));
+    const pages = Math.max(1, Math.min(3, Number(url.searchParams.get("pages") || 2))); // up to 3 pages
+    const perPage = Math.max(50, Math.min(250, Number(url.searchParams.get("per_page") || 250)));
 
     const allCoins: any[] = [];
 

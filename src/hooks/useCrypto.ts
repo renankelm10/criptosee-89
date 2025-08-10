@@ -302,7 +302,7 @@ export const useCrypto = () => {
       .from('latest_markets')
       .select('*')
       .order('market_cap_rank', { ascending: true })
-      .limit(300);
+      .limit(500);
     if (mErr) {
       console.warn('⚠️ Supabase latest_markets erro:', mErr.message);
       return null;
@@ -589,7 +589,7 @@ export const useCrypto = () => {
       if (isFetchingRef.current) return;
       try {
         setIsUpdating(true);
-        await supabase.functions.invoke('refresh-markets', { body: { pages: 2, per_page: 200 } });
+        await supabase.functions.invoke('refresh-markets', { body: { pages: 3, per_page: 250 } });
       } catch (e) {
         console.warn('⚠️ Falha ao invocar refresh-markets:', e);
       } finally {
