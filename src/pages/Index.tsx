@@ -23,7 +23,16 @@ const Index = () => {
   } = useCrypto();
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState<"all" | "gainers" | "losers" | "volatile">("volatile");
+  const [volatilityLevel, setVolatilityLevel] = useState<"all" | "extrema" | "alta" | "media" | "baixa">("all");
   const [showNotifications, setShowNotifications] = useState(false);
+
+  // Limiares de volatilidade (variação absoluta em 24h)
+  const VOLATILITY_THRESHOLDS = {
+    extrema: 20, // >= 20%
+    alta: 10,    // 10% - 19.99%
+    media: 5,    // 5% - 9.99%
+    baixa: 0     // 0% - 4.99%
+  };
   const {
     toast
   } = useToast();
@@ -56,19 +65,30 @@ const Index = () => {
       description: "Os dados das criptomoedas foram atualizados com sucesso."
     });
   };
-  const filteredCryptos = cryptos.filter(crypto => {
+  // Ordena por volatilidade (variação absoluta 24h) e seleciona top 500
+  const volatileSorted = [...cryptos].sort((a, b) => Math.abs(b.price_change_percentage_24h || 0) - Math.abs(a.price_change_percentage_24h || 0));
+  const topVolatile = volatileSorted.slice(0, 500);
+
+  // Fonte depende do filtro principal
+  const sourceList = filter === "volatile" ? topVolatile : cryptos;
+
+  const filteredCryptos = sourceList.filter(crypto => {
+    const vol = Math.abs(crypto.price_change_percentage_24h || 0);
     const matchesSearch = crypto.name.toLowerCase().includes(searchTerm.toLowerCase()) || crypto.symbol.toLowerCase().includes(searchTerm.toLowerCase());
     if (!matchesSearch) return false;
-    console.log(`🔍 Filtro ativo: ${filter}, Crypto: ${crypto.name}, Change 24h: ${crypto.price_change_percentage_24h}`);
+
     switch (filter) {
       case "gainers":
         return crypto.price_change_percentage_24h > 0;
       case "losers":
         return crypto.price_change_percentage_24h < 0;
       case "volatile":
-        return Math.abs(crypto.price_change_percentage_24h) > 5;
+        if (volatilityLevel === "extrema") return vol >= VOLATILITY_THRESHOLDS.extrema;
+        if (volatilityLevel === "alta") return vol >= VOLATILITY_THRESHOLDS.alta && vol < VOLATILITY_THRESHOLDS.extrema;
+        if (volatilityLevel === "media") return vol >= VOLATILITY_THRESHOLDS.media && vol < VOLATILITY_THRESHOLDS.alta;
+        if (volatilityLevel === "baixa") return vol >= VOLATILITY_THRESHOLDS.baixa && vol < VOLATILITY_THRESHOLDS.media;
+        return true; // 'all'
       case "all":
-        console.log(`✅ Filtro "all" - incluindo: ${crypto.name}`);
         return true;
       default:
         return true;
@@ -147,14 +167,35 @@ const Index = () => {
             key: "all",
             label: "Todas",
             icon: null
-          }].map(({
-            key,
-            label,
-            icon: Icon
-          }) => <Button key={key} variant={filter === key ? "default" : "ghost"} size="sm" onClick={() => setFilter(key as any)} className="flex items-center gap-2">
+          }].map(({ key, label, icon: Icon }) => (
+              <Button
+                key={key}
+                variant={filter === key ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setFilter(key as any)}
+                className="flex items-center gap-2"
+              >
                 {Icon && <Icon className="w-4 h-4" />}
                 {label}
-              </Button>)}
+              </Button>
+            ))}
+
+            {filter === "volatile" && (
+              <div className="flex items-center gap-2 ml-2">
+                <span className="text-sm text-muted-foreground">Nível:</span>
+                {[{ key: "all", label: "Todas" }, { key: "extrema", label: "Extrema" }, { key: "alta", label: "Alta" }, { key: "media", label: "Média" }, { key: "baixa", label: "Baixa" }].map(({ key, label }) => (
+                  <Button
+                    key={key}
+                    variant={volatilityLevel === key ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setVolatilityLevel(key as any)}
+                    className="flex items-center gap-2"
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
