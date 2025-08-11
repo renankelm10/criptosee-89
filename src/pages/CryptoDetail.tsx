@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ArrowLeft, TrendingUp, TrendingDown, Calculator, BarChart3 } from "lucide-react";
 import { CryptoPriceChart } from "@/components/CryptoPriceChart";
 import { InvestmentCalculator } from "@/components/InvestmentCalculator";
@@ -23,6 +24,10 @@ interface CryptoDetailData {
     market_cap: { usd: number };
     total_volume: { usd: number };
     market_cap_rank: number;
+    fully_diluted_valuation?: { usd: number } | null;
+    circulating_supply?: number | null;
+    total_supply?: number | null;
+    max_supply?: number | null;
   };
   description: { en: string };
   links: {
@@ -212,123 +217,184 @@ const CryptoDetail = () => {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Price Overview */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <Card className="p-6 bg-gradient-card border-border">
-            <div className="text-sm text-muted-foreground mb-2">Preço Atual</div>
-            <div className="text-3xl font-bold text-foreground mb-4">
-              {formatPrice(crypto.market_data.current_price.usd)}
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">24h</span>
-                <div className={`flex items-center gap-1 ${isPositive24h ? 'text-crypto-gain' : 'text-crypto-loss'}`}>
-                  {isPositive24h ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                  <span className="font-medium">
-                    {isPositive24h ? '+' : ''}{crypto.market_data.price_change_percentage_24h?.toFixed(2)}%
-                  </span>
+      <main className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
+          {/* Lateral: Métricas e Links */}
+          <aside className="space-y-6">
+            {/* Preço + Variações */}
+            <Card className="p-6 bg-gradient-card border-border">
+              <div className="text-sm text-muted-foreground mb-2">Preço Atual</div>
+              <div className="text-3xl font-bold text-foreground mb-4">
+                {formatPrice(crypto.market_data.current_price.usd)}
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">24h</span>
+                  <div className={`flex items-center gap-1 ${isPositive24h ? 'text-crypto-gain' : 'text-crypto-loss'}`}>
+                    {isPositive24h ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                    <span className="font-medium">
+                      {isPositive24h ? '+' : ''}{crypto.market_data.price_change_percentage_24h?.toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">7d</span>
+                  <div className={`flex items-center gap-1 ${isPositive7d ? 'text-crypto-gain' : 'text-crypto-loss'}`}>
+                    {isPositive7d ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                    <span className="font-medium">
+                      {isPositive7d ? '+' : ''}{crypto.market_data.price_change_percentage_7d?.toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">30d</span>
+                  <div className={`flex items-center gap-1 ${isPositive30d ? 'text-crypto-gain' : 'text-crypto-loss'}`}>
+                    {isPositive30d ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                    <span className="font-medium">
+                      {isPositive30d ? '+' : ''}{crypto.market_data.price_change_percentage_30d?.toFixed(2)}%
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">7d</span>
-                <div className={`flex items-center gap-1 ${isPositive7d ? 'text-crypto-gain' : 'text-crypto-loss'}`}>
-                  {isPositive7d ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                  <span className="font-medium">
-                    {isPositive7d ? '+' : ''}{crypto.market_data.price_change_percentage_7d?.toFixed(2)}%
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">30d</span>
-                <div className={`flex items-center gap-1 ${isPositive30d ? 'text-crypto-gain' : 'text-crypto-loss'}`}>
-                  {isPositive30d ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                  <span className="font-medium">
-                    {isPositive30d ? '+' : ''}{crypto.market_data.price_change_percentage_30d?.toFixed(2)}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Card>
+            </Card>
 
-          <Card className="p-6 bg-gradient-card border-border">
-            <div className="text-sm text-muted-foreground mb-2">Market Cap</div>
-            <div className="text-2xl font-bold text-foreground mb-4">
-              {formatLargeNumber(crypto.market_data.market_cap.usd)}
-            </div>
-            <div className="text-sm text-muted-foreground mb-2">Volume 24h</div>
-            <div className="text-xl font-semibold text-foreground">
-              {formatLargeNumber(crypto.market_data.total_volume.usd)}
-            </div>
-          </Card>
+            {/* Market Cap / Volume / FDV */}
+            <Card className="p-6 bg-gradient-card border-border">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-muted-foreground mb-1">Market Cap</div>
+                  <div className="text-xl font-semibold text-foreground">
+                    {formatLargeNumber(crypto.market_data.market_cap.usd)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground mb-1">Rank</div>
+                  <div className="text-xl font-semibold text-foreground">#{crypto.market_data.market_cap_rank}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground mb-1">Volume (24h)</div>
+                  <div className="text-lg font-medium text-foreground">
+                    {formatLargeNumber(crypto.market_data.total_volume.usd)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground mb-1">FDV</div>
+                  <div className="text-lg font-medium text-foreground">
+                    {crypto.market_data.fully_diluted_valuation?.usd ? formatLargeNumber(crypto.market_data.fully_diluted_valuation.usd) : '-'}
+                  </div>
+                </div>
+              </div>
+            </Card>
 
-          <Card className="p-6 bg-gradient-card border-border">
-            <div className="text-sm text-muted-foreground mb-4">Links Oficiais</div>
-            <div className="space-y-2">
-              {crypto.links.homepage[0] && (
-                <a
-                  href={crypto.links.homepage[0]}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block text-primary hover:text-primary/80 transition-colors"
-                >
-                  🌐 Website Oficial
-                </a>
-              )}
-              {crypto.links.blockchain_site[0] && (
-                <a
-                  href={crypto.links.blockchain_site[0]}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block text-primary hover:text-primary/80 transition-colors"
-                >
-                  ⛓️ Blockchain Explorer
-                </a>
-              )}
-            </div>
-          </Card>
+            {/* Suply */}
+            <Card className="p-6 bg-gradient-card border-border">
+              <div className="text-sm text-muted-foreground mb-3">Supply</div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Circulating</span>
+                  <span className="font-medium text-foreground">
+                    {crypto.market_data.circulating_supply?.toLocaleString() ?? '-'} {crypto.symbol.toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Total</span>
+                  <span className="font-medium text-foreground">
+                    {crypto.market_data.total_supply?.toLocaleString() ?? '-'} {crypto.symbol.toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Max</span>
+                  <span className="font-medium text-foreground">
+                    {crypto.market_data.max_supply?.toLocaleString() ?? '-'} {crypto.symbol.toUpperCase()}
+                  </span>
+                </div>
+              </div>
+            </Card>
+
+            {/* Links */}
+            <Card className="p-6 bg-gradient-card border-border">
+              <div className="text-sm text-muted-foreground mb-2">Links Oficiais</div>
+              <div className="space-y-2">
+                {crypto.links.homepage[0] && (
+                  <a
+                    href={crypto.links.homepage[0]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-primary hover:text-primary/80 transition-colors"
+                  >
+                    🌐 Website Oficial
+                  </a>
+                )}
+                {crypto.links.blockchain_site[0] && (
+                  <a
+                    href={crypto.links.blockchain_site[0]}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-primary hover:text-primary/80 transition-colors"
+                  >
+                    ⛓️ Blockchain Explorer
+                  </a>
+                )}
+              </div>
+            </Card>
+          </aside>
+
+          {/* Principal: Abas com Gráfico / Visão Geral / Sobre */}
+          <section className="space-y-6">
+            <Tabs defaultValue="chart" className="w-full">
+              <div className="flex items-center justify-between mb-4">
+                <TabsList>
+                  <TabsTrigger value="chart">Gráfico</TabsTrigger>
+                  <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+                  <TabsTrigger value="about">Sobre</TabsTrigger>
+                </TabsList>
+              </div>
+
+              <TabsContent value="chart">
+                <Card className="p-6 bg-gradient-card border-border">
+                  <div className="flex items-center gap-2 mb-6">
+                    <BarChart3 className="w-5 h-5 text-primary" />
+                    <h2 className="text-xl font-bold text-foreground">Gráfico de Preços</h2>
+                  </div>
+                  <CryptoPriceChart cryptoId={crypto.id} />
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="overview">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  <Card className="p-6 bg-gradient-card border-border">
+                    <div className="flex items-center gap-2 mb-6">
+                      <Calculator className="w-5 h-5 text-primary" />
+                      <h2 className="text-xl font-bold text-foreground">Calculadora de Investimento</h2>
+                    </div>
+                    <InvestmentCalculator 
+                      cryptoName={crypto.name}
+                      currentPrice={crypto.market_data.current_price.usd}
+                      priceChange24h={crypto.market_data.price_change_percentage_24h}
+                      priceChange7d={crypto.market_data.price_change_percentage_7d}
+                      priceChange30d={crypto.market_data.price_change_percentage_30d}
+                    />
+                  </Card>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="about">
+                {crypto.description.en && (
+                  <Card className="p-6 bg-gradient-card border-border">
+                    <h2 className="text-xl font-bold text-foreground mb-4">Sobre {crypto.name}</h2>
+                    <div 
+                      className="text-muted-foreground prose prose-invert max-w-none"
+                      dangerouslySetInnerHTML={{ 
+                        __html: crypto.description.en.substring(0, 700) + (crypto.description.en.length > 700 ? '...' : '')
+                      }}
+                    />
+                  </Card>
+                )}
+              </TabsContent>
+            </Tabs>
+          </section>
         </div>
-
-        {/* Chart and Calculator */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-          {/* Price Chart */}
-          <Card className="p-6 bg-gradient-card border-border">
-            <div className="flex items-center gap-2 mb-6">
-              <BarChart3 className="w-5 h-5 text-primary" />
-              <h2 className="text-xl font-bold text-foreground">Gráfico de Preços</h2>
-            </div>
-            <CryptoPriceChart cryptoId={crypto.id} />
-          </Card>
-
-          {/* Investment Calculator */}
-          <Card className="p-6 bg-gradient-card border-border">
-            <div className="flex items-center gap-2 mb-6">
-              <Calculator className="w-5 h-5 text-primary" />
-              <h2 className="text-xl font-bold text-foreground">Calculadora de Investimento</h2>
-            </div>
-            <InvestmentCalculator 
-              cryptoName={crypto.name}
-              currentPrice={crypto.market_data.current_price.usd}
-              priceChange24h={crypto.market_data.price_change_percentage_24h}
-              priceChange7d={crypto.market_data.price_change_percentage_7d}
-              priceChange30d={crypto.market_data.price_change_percentage_30d}
-            />
-          </Card>
-        </div>
-
-        {/* Description */}
-        {crypto.description.en && (
-          <Card className="mt-8 p-6 bg-gradient-card border-border">
-            <h2 className="text-xl font-bold text-foreground mb-4">Sobre {crypto.name}</h2>
-            <div 
-              className="text-muted-foreground prose prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ 
-                __html: crypto.description.en.substring(0, 500) + (crypto.description.en.length > 500 ? '...' : '')
-              }}
-            />
-          </Card>
-        )}
-      </div>
+      </main>
     </div>
   );
 };
