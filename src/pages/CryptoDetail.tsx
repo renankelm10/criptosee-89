@@ -7,6 +7,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ArrowLeft, TrendingUp, TrendingDown, Calculator, BarChart3 } from "lucide-react";
 import { CryptoPriceChart } from "@/components/CryptoPriceChart";
 import { InvestmentCalculator } from "@/components/InvestmentCalculator";
+import { CryptoMarketsTable } from "@/components/CryptoMarketsTable";
+import { CryptoSocialFeed } from "@/components/CryptoSocialFeed";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { useToast } from "@/hooks/use-toast";
 import { SEO } from "@/components/SEO";
@@ -345,7 +347,9 @@ const CryptoDetail = () => {
               <div className="flex items-center justify-between mb-4">
                 <TabsList>
                   <TabsTrigger value="chart">Gráfico</TabsTrigger>
+                  <TabsTrigger value="markets">Mercados</TabsTrigger>
                   <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+                  <TabsTrigger value="news">Atualizações</TabsTrigger>
                   <TabsTrigger value="about">Sobre</TabsTrigger>
                 </TabsList>
               </div>
@@ -376,6 +380,20 @@ const CryptoDetail = () => {
                     />
                   </Card>
                 </div>
+              </TabsContent>
+
+              <TabsContent value="markets">
+                <Card className="p-6 bg-gradient-card border-border">
+                  <h2 className="text-xl font-bold text-foreground mb-4">Mercados</h2>
+                  <CryptoMarketsTable coinId={crypto.id} />
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="news">
+                <Card className="p-6 bg-gradient-card border-border">
+                  <h2 className="text-xl font-bold text-foreground mb-4">Atualizações</h2>
+                  <CryptoSocialFeed coinId={crypto.id} />
+                </Card>
               </TabsContent>
 
               <TabsContent value="about">
