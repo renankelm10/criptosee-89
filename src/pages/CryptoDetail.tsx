@@ -12,6 +12,7 @@ import { CryptoSocialFeed } from "@/components/CryptoSocialFeed";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { useToast } from "@/hooks/use-toast";
 import { SEO } from "@/components/SEO";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CryptoDetailData {
   id: string;
@@ -47,83 +48,99 @@ const CryptoDetail = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchCryptoDetail = async (retryCount = 0) => {
-      console.log('🔍 CryptoDetail: iniciando fetch para ID:', id);
+    let cancelled = false;
+
+    const load = async () => {
       if (!id) {
-        console.error('❌ CryptoDetail: ID não fornecido');
         setError('ID da criptomoeda não fornecido');
         setLoading(false);
         return;
       }
 
+      setLoading(true);
+      setError(null);
+
+      // 1) Buscar fallback no Supabase primeiro para evitar tela de erro
+      let hasFallback = false;
       try {
-        setLoading(true);
-        setError(null);
-
-        // Delay progressivo para retry
-        if (retryCount > 0) {
-          await new Promise(resolve => setTimeout(resolve, retryCount * 1500));
-        }
-
-        console.log(`Buscando dados de ${id}...`);
-
-        const response = await Promise.race([
-          fetch(
-            `https://api.coingecko.com/api/v3/coins/${id}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`
-          ),
-          new Promise<never>((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout')), 15000)
-          )
+        const [{ data: coin }, { data: market }] = await Promise.all([
+          supabase.from('coins').select('id,name,symbol,image').eq('id', id).maybeSingle(),
+          supabase
+            .from('latest_markets')
+            .select('price,market_cap,market_cap_rank,volume_24h,price_change_percentage_24h,price_change_percentage_7d,circulating_supply,total_supply,max_supply')
+            .eq('coin_id', id)
+            .maybeSingle(),
         ]);
 
-        if (response.status === 429) {
-          // Rate limited - retry after delay
-          if (retryCount < 3) {
-            console.log(`Rate limit na API de detalhes, tentando novamente em ${(retryCount + 1) * 2} segundos...`);
-            return fetchCryptoDetail(retryCount + 1);
+        if (coin) {
+          const fallback: CryptoDetailData = {
+            id: coin.id,
+            name: coin.name,
+            symbol: coin.symbol,
+            image: { large: coin.image },
+            market_data: {
+              current_price: { usd: (market?.price as number) ?? 0 },
+              price_change_percentage_24h: (market?.price_change_percentage_24h as number) ?? 0,
+              price_change_percentage_7d: (market?.price_change_percentage_7d as number) ?? 0,
+              price_change_percentage_30d: 0,
+              market_cap: { usd: (market?.market_cap as number) ?? 0 },
+              total_volume: { usd: (market?.volume_24h as number) ?? 0 },
+              market_cap_rank: (market?.market_cap_rank as number) ?? 0,
+              fully_diluted_valuation: null,
+              circulating_supply: (market?.circulating_supply as number) ?? null,
+              total_supply: (market?.total_supply as number) ?? null,
+              max_supply: (market?.max_supply as number) ?? null,
+            },
+            description: { en: '' },
+            links: { homepage: [], blockchain_site: [] },
+          };
+          if (!cancelled) {
+            setCrypto(fallback);
+            hasFallback = true;
+            setLoading(false); // já renderiza com dados locais
           }
-          throw new Error('API temporariamente indisponível. Tente novamente em alguns minutos.');
         }
-
-        if (!response.ok) {
-          // Se for 404, pode ser que o ID não existe
-          if (response.status === 404) {
-            throw new Error('Criptomoeda não encontrada. Verifique se o ID está correto.');
-          }
-          throw new Error(`Erro ${response.status}: Falha ao buscar dados da criptomoeda`);
-        }
-
-        const data = await response.json();
-        
-        // Validar se os dados são válidos
-        if (!data || !data.market_data || !data.market_data.current_price) {
-          throw new Error('Dados inválidos recebidos da API');
-        }
-
-        console.log(`Dados carregados para ${data.name}`);
-        setCrypto(data);
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido';
-        console.error(`Erro ao carregar ${id}:`, errorMessage);
-        
-        // Retry automático para erros de conexão
-        if ((errorMessage.includes('Failed to fetch') || errorMessage.includes('Timeout')) && retryCount < 2) {
-          console.log(`Tentando novamente... (${retryCount + 1}/3)`);
-          return fetchCryptoDetail(retryCount + 1);
-        }
-        
-        setError(errorMessage);
-        toast({
-          title: "Erro ao carregar dados",
-          description: errorMessage,
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
+      } catch (e) {
+        console.warn('Falha ao carregar fallback do Supabase', e);
       }
+
+      // 2) Tentar buscar detalhes completos no CoinGecko em background
+      const fetchCoinGecko = async (retry = 0): Promise<void> => {
+        try {
+          if (retry > 0) await new Promise(r => setTimeout(r, (retry + 1) * 1500));
+          const response = await fetch(
+            `https://api.coingecko.com/api/v3/coins/${id}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`
+          );
+
+          if (response.status === 429) {
+            if (retry < 3) return fetchCoinGecko(retry + 1);
+            throw new Error('API temporariamente indisponível. Tente novamente mais tarde.');
+          }
+          if (!response.ok) {
+            if (response.status === 404) throw new Error('Criptomoeda não encontrada.');
+            throw new Error(`Erro ${response.status}: Falha ao buscar dados da criptomoeda`);
+          }
+          const data = await response.json();
+          if (!cancelled) setCrypto(data);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+          console.warn('Mantendo fallback (CoinGecko falhou):', msg);
+          if (!hasFallback && !cancelled) {
+            setError(msg);
+          }
+          if (!cancelled && hasFallback) {
+            toast({ title: 'Usando dados do Supabase', description: 'Não foi possível completar os detalhes agora.', variant: 'default' });
+          }
+        }
+      };
+
+      await fetchCoinGecko();
     };
 
-    fetchCryptoDetail();
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, [id, toast]);
 
   const formatPrice = (price: number) => {
@@ -143,7 +160,7 @@ const CryptoDetail = () => {
     return `$${num.toLocaleString()}`;
   };
 
-  if (loading) {
+  if (loading && !crypto) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
@@ -153,7 +170,7 @@ const CryptoDetail = () => {
     );
   }
 
-  if (error || !crypto) {
+  if (!crypto) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
@@ -172,9 +189,9 @@ const CryptoDetail = () => {
     );
   }
 
-  const isPositive24h = crypto.market_data.price_change_percentage_24h > 0;
-  const isPositive7d = crypto.market_data.price_change_percentage_7d > 0;
-  const isPositive30d = crypto.market_data.price_change_percentage_30d > 0;
+  const isPositive24h = (crypto.market_data.price_change_percentage_24h ?? 0) > 0;
+  const isPositive7d = (crypto.market_data.price_change_percentage_7d ?? 0) > 0;
+  const isPositive30d = (crypto.market_data.price_change_percentage_30d ?? 0) > 0;
 
   return (
     <div className="min-h-screen bg-background">
