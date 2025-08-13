@@ -239,7 +239,7 @@ const CryptoDetail = () => {
       <main className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr_360px] gap-6">
           {/* Esquerda: Atualizações da internet (alocado) */}
-          <aside className="space-y-6 order-1 xl:order-none">
+          <aside className="space-y-6 xl:order-3">
             <Card className="p-6 bg-gradient-card border-border">
               <h2 className="text-xl font-bold text-foreground mb-4">Atualizações</h2>
               {/* Espaço reservado para agregador social; componente já existe */}
@@ -248,7 +248,7 @@ const CryptoDetail = () => {
           </aside>
 
           {/* Centro: Gráfico e Mercados */}
-          <section className="space-y-6">
+          <section className="space-y-6 xl:order-2">
             <Card className="p-6 bg-gradient-card border-border">
               <div className="flex items-center gap-2 mb-6">
                 <BarChart3 className="w-5 h-5 text-primary" />
@@ -264,7 +264,7 @@ const CryptoDetail = () => {
           </section>
 
           {/* Direita: Métricas, Links e Sobre */}
-          <aside className="space-y-6">
+          <aside className="space-y-6 xl:order-1">
             {/* Preço + Variações */}
             <Card className="p-6 bg-gradient-card border-border">
               <div className="text-sm text-muted-foreground mb-2">Preço Atual</div>
