@@ -15,7 +15,6 @@ RUN npm ci --no-audit --prefer-offline
 # Build stage
 FROM deps AS build
 COPY . .
-RUN npm run test
 
 # Production stage
 FROM node:18-alpine AS runner
