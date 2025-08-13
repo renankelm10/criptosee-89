@@ -3,10 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, TrendingUp, TrendingDown, Calculator, BarChart3 } from "lucide-react";
+
+import { ArrowLeft, TrendingUp, TrendingDown, BarChart3 } from "lucide-react";
 import { CryptoPriceChart } from "@/components/CryptoPriceChart";
-import { InvestmentCalculator } from "@/components/InvestmentCalculator";
+
 import { CryptoMarketsTable } from "@/components/CryptoMarketsTable";
 import { CryptoSocialFeed } from "@/components/CryptoSocialFeed";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
@@ -237,8 +237,33 @@ const CryptoDetail = () => {
       </div>
 
       <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
-          {/* Lateral: Métricas e Links */}
+        <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr_360px] gap-6">
+          {/* Esquerda: Atualizações da internet (alocado) */}
+          <aside className="space-y-6 order-1 xl:order-none">
+            <Card className="p-6 bg-gradient-card border-border">
+              <h2 className="text-xl font-bold text-foreground mb-4">Atualizações</h2>
+              {/* Espaço reservado para agregador social; componente já existe */}
+              <CryptoSocialFeed coinId={crypto.id} />
+            </Card>
+          </aside>
+
+          {/* Centro: Gráfico e Mercados */}
+          <section className="space-y-6">
+            <Card className="p-6 bg-gradient-card border-border">
+              <div className="flex items-center gap-2 mb-6">
+                <BarChart3 className="w-5 h-5 text-primary" />
+                <h2 className="text-xl font-bold text-foreground">Gráfico de Preços</h2>
+              </div>
+              <CryptoPriceChart cryptoId={crypto.id} />
+            </Card>
+
+            <Card className="p-6 bg-gradient-card border-border">
+              <h2 className="text-xl font-bold text-foreground mb-4">Mercados</h2>
+              <CryptoMarketsTable coinId={crypto.id} />
+            </Card>
+          </section>
+
+          {/* Direita: Métricas, Links e Sobre */}
           <aside className="space-y-6">
             {/* Preço + Variações */}
             <Card className="p-6 bg-gradient-card border-border">
@@ -305,7 +330,7 @@ const CryptoDetail = () => {
               </div>
             </Card>
 
-            {/* Suply */}
+            {/* Supply */}
             <Card className="p-6 bg-gradient-card border-border">
               <div className="text-sm text-muted-foreground mb-3">Supply</div>
               <div className="space-y-2">
@@ -330,16 +355,16 @@ const CryptoDetail = () => {
               </div>
             </Card>
 
-            {/* Links */}
+            {/* Links + Sobre */}
             <Card className="p-6 bg-gradient-card border-border">
               <div className="text-sm text-muted-foreground mb-2">Links Oficiais</div>
-              <div className="space-y-2">
+              <div className="space-y-2 mb-4">
                 {crypto.links.homepage[0] && (
                   <a
                     href={crypto.links.homepage[0]}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block text-primary hover:text-primary/80 transition-colors"
+                    className="block text-primary hover:text-primary/80 transition-colors story-link"
                   >
                     🌐 Website Oficial
                   </a>
@@ -349,85 +374,26 @@ const CryptoDetail = () => {
                     href={crypto.links.blockchain_site[0]}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block text-primary hover:text-primary/80 transition-colors"
+                    className="block text-primary hover:text-primary/80 transition-colors story-link"
                   >
                     ⛓️ Blockchain Explorer
                   </a>
                 )}
               </div>
+
+              {crypto.description.en && (
+                <div>
+                  <h2 className="text-xl font-bold text-foreground mb-3">Sobre {crypto.name}</h2>
+                  <div
+                    className="text-muted-foreground prose prose-invert max-w-none"
+                    dangerouslySetInnerHTML={{
+                      __html: crypto.description.en.substring(0, 700) + (crypto.description.en.length > 700 ? '...' : '')
+                    }}
+                  />
+                </div>
+              )}
             </Card>
           </aside>
-
-          {/* Principal: Abas com Gráfico / Visão Geral / Sobre */}
-          <section className="space-y-6">
-            <Tabs defaultValue="chart" className="w-full">
-              <div className="flex items-center justify-between mb-4">
-                <TabsList>
-                  <TabsTrigger value="chart">Gráfico</TabsTrigger>
-                  <TabsTrigger value="markets">Mercados</TabsTrigger>
-                  <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-                  <TabsTrigger value="news">Atualizações</TabsTrigger>
-                  <TabsTrigger value="about">Sobre</TabsTrigger>
-                </TabsList>
-              </div>
-
-              <TabsContent value="chart">
-                <Card className="p-6 bg-gradient-card border-border">
-                  <div className="flex items-center gap-2 mb-6">
-                    <BarChart3 className="w-5 h-5 text-primary" />
-                    <h2 className="text-xl font-bold text-foreground">Gráfico de Preços</h2>
-                  </div>
-                  <CryptoPriceChart cryptoId={crypto.id} />
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="overview">
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                  <Card className="p-6 bg-gradient-card border-border">
-                    <div className="flex items-center gap-2 mb-6">
-                      <Calculator className="w-5 h-5 text-primary" />
-                      <h2 className="text-xl font-bold text-foreground">Calculadora de Investimento</h2>
-                    </div>
-                    <InvestmentCalculator 
-                      cryptoName={crypto.name}
-                      currentPrice={crypto.market_data.current_price.usd}
-                      priceChange24h={crypto.market_data.price_change_percentage_24h}
-                      priceChange7d={crypto.market_data.price_change_percentage_7d}
-                      priceChange30d={crypto.market_data.price_change_percentage_30d}
-                    />
-                  </Card>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="markets">
-                <Card className="p-6 bg-gradient-card border-border">
-                  <h2 className="text-xl font-bold text-foreground mb-4">Mercados</h2>
-                  <CryptoMarketsTable coinId={crypto.id} />
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="news">
-                <Card className="p-6 bg-gradient-card border-border">
-                  <h2 className="text-xl font-bold text-foreground mb-4">Atualizações</h2>
-                  <CryptoSocialFeed coinId={crypto.id} />
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="about">
-                {crypto.description.en && (
-                  <Card className="p-6 bg-gradient-card border-border">
-                    <h2 className="text-xl font-bold text-foreground mb-4">Sobre {crypto.name}</h2>
-                    <div 
-                      className="text-muted-foreground prose prose-invert max-w-none"
-                      dangerouslySetInnerHTML={{ 
-                        __html: crypto.description.en.substring(0, 700) + (crypto.description.en.length > 700 ? '...' : '')
-                      }}
-                    />
-                  </Card>
-                )}
-              </TabsContent>
-            </Tabs>
-          </section>
         </div>
       </main>
     </div>
