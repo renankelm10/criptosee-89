@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  crypto-api:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_HOST=phpmyadmin_postgrescriptosee
+      - DB_PORT=5432
+      - DB_NAME=Criptosee
+      - DB_USER=postgres
+      - DB_PASSWORD=cc6a9fc71e5636beabe7
+      - NODE_ENV=production
+      - PORT=3000
+      - FRONTEND_URL=https://seu-frontend.lovableproject.com
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
