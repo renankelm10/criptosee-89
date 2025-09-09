@@ -19,7 +19,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copy build output
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-EXPOSE 80
+EXPOSE 9080
 
 # Healthcheck that doesn't require extra tools and won't kill the service
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD nginx -t || exit 1
