@@ -2,9 +2,13 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# Set npm timeout and registry
+RUN npm config set fetch-timeout 600000
+RUN npm config set fetch-retries 5
+
 # Install dependencies
 COPY package*.json ./
-RUN npm ci --prefer-offline --no-audit --progress=false
+RUN npm ci --prefer-offline --no-audit --progress=false --verbose
 
 # Copy source and build
 COPY . .
