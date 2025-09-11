@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
@@ -37,30 +37,6 @@ export type Database = {
           image?: string | null
           name?: string
           symbol?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      email_notifications: {
-        Row: {
-          created_at: string
-          email: string
-          id: string
-          is_active: boolean
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          id?: string
-          is_active?: boolean
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          id?: string
-          is_active?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -179,33 +155,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      notification_log: {
-        Row: {
-          coin_id: string
-          coin_name: string
-          email: string
-          id: string
-          sent_at: string
-          volatility_percentage: number
-        }
-        Insert: {
-          coin_id: string
-          coin_name: string
-          email: string
-          id?: string
-          sent_at?: string
-          volatility_percentage: number
-        }
-        Update: {
-          coin_id?: string
-          coin_name?: string
-          email?: string
-          id?: string
-          sent_at?: string
-          volatility_percentage?: number
-        }
-        Relationships: []
       }
     }
     Views: {

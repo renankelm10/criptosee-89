@@ -1,4 +1,1 @@
 project_id = "ztpbtbtaxqgndwvvzacs"
-
-[functions.refresh-markets]
-verify_jwt = false
