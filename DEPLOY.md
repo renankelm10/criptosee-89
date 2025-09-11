@@ -10,7 +10,9 @@ Prerequisites: Docker installed on your VPS.
    docker build -t crypto-surge-radar:latest .
 
 2) Run the container
-   docker run -d --name crypto-surge-radar -p 80:80 crypto-surge-radar:latest
+   docker run -d --name crypto-surge-radar -p 9080:9080 crypto-surge-radar:latest
+
+Note: Development server runs on port 8080, production Docker container serves on port 9080.
 
 3) (Optional) Enable HTTPS with a reverse proxy or use Caddy/Traefik. For Nginx + Certbot, see Option B notes.
 

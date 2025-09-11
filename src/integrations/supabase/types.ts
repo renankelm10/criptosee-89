@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
@@ -43,27 +43,44 @@ export type Database = {
       }
       email_notifications: {
         Row: {
-          created_at: string
+          coin_id: string | null
+          created_at: string | null
           email: string
-          id: string
-          is_active: boolean
-          updated_at: string
+          id: number
+          is_active: boolean | null
+          price_threshold: number
+          threshold_type: string | null
+          updated_at: string | null
         }
         Insert: {
-          created_at?: string
+          coin_id?: string | null
+          created_at?: string | null
           email: string
-          id?: string
-          is_active?: boolean
-          updated_at?: string
+          id?: number
+          is_active?: boolean | null
+          price_threshold: number
+          threshold_type?: string | null
+          updated_at?: string | null
         }
         Update: {
-          created_at?: string
+          coin_id?: string | null
+          created_at?: string | null
           email?: string
-          id?: string
-          is_active?: boolean
-          updated_at?: string
+          id?: number
+          is_active?: boolean | null
+          price_threshold?: number
+          threshold_type?: string | null
+          updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "email_notifications_coin_id_fkey"
+            columns: ["coin_id"]
+            isOneToOne: false
+            referencedRelation: "coins"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       latest_markets: {
         Row: {
@@ -182,30 +199,35 @@ export type Database = {
       }
       notification_log: {
         Row: {
-          coin_id: string
-          coin_name: string
-          email: string
-          id: string
-          sent_at: string
-          volatility_percentage: number
+          email_notification_id: number | null
+          id: number
+          price_at_notification: number | null
+          sent_at: string | null
+          status: string | null
         }
         Insert: {
-          coin_id: string
-          coin_name: string
-          email: string
-          id?: string
-          sent_at?: string
-          volatility_percentage: number
+          email_notification_id?: number | null
+          id?: number
+          price_at_notification?: number | null
+          sent_at?: string | null
+          status?: string | null
         }
         Update: {
-          coin_id?: string
-          coin_name?: string
-          email?: string
-          id?: string
-          sent_at?: string
-          volatility_percentage?: number
+          email_notification_id?: number | null
+          id?: number
+          price_at_notification?: number | null
+          sent_at?: string | null
+          status?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notification_log_email_notification_id_fkey"
+            columns: ["email_notification_id"]
+            isOneToOne: false
+            referencedRelation: "email_notifications"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
