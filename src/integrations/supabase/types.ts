@@ -41,6 +41,47 @@ export type Database = {
         }
         Relationships: []
       }
+      email_notifications: {
+        Row: {
+          coin_id: string | null
+          created_at: string | null
+          email: string
+          id: number
+          is_active: boolean | null
+          price_threshold: number
+          threshold_type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          coin_id?: string | null
+          created_at?: string | null
+          email: string
+          id?: number
+          is_active?: boolean | null
+          price_threshold: number
+          threshold_type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          coin_id?: string | null
+          created_at?: string | null
+          email?: string
+          id?: number
+          is_active?: boolean | null
+          price_threshold?: number
+          threshold_type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_notifications_coin_id_fkey"
+            columns: ["coin_id"]
+            isOneToOne: false
+            referencedRelation: "coins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       latest_markets: {
         Row: {
           ath: number | null
@@ -152,6 +193,38 @@ export type Database = {
             columns: ["coin_id"]
             isOneToOne: false
             referencedRelation: "coins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_log: {
+        Row: {
+          email_notification_id: number | null
+          id: number
+          price_at_notification: number | null
+          sent_at: string | null
+          status: string | null
+        }
+        Insert: {
+          email_notification_id?: number | null
+          id?: number
+          price_at_notification?: number | null
+          sent_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          email_notification_id?: number | null
+          id?: number
+          price_at_notification?: number | null
+          sent_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_log_email_notification_id_fkey"
+            columns: ["email_notification_id"]
+            isOneToOne: false
+            referencedRelation: "email_notifications"
             referencedColumns: ["id"]
           },
         ]
