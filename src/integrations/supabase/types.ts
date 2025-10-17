@@ -88,6 +88,7 @@ export type Database = {
           id: string
           last_updated: string | null
           market_cap: number | null
+          market_cap_rank: number | null
           max_supply: number | null
           price_change_percentage_24h: number | null
           price_change_percentage_30d: number | null
@@ -105,6 +106,7 @@ export type Database = {
           id?: string
           last_updated?: string | null
           market_cap?: number | null
+          market_cap_rank?: number | null
           max_supply?: number | null
           price_change_percentage_24h?: number | null
           price_change_percentage_30d?: number | null
@@ -122,6 +124,7 @@ export type Database = {
           id?: string
           last_updated?: string | null
           market_cap?: number | null
+          market_cap_rank?: number | null
           max_supply?: number | null
           price_change_percentage_24h?: number | null
           price_change_percentage_30d?: number | null
