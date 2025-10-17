@@ -29,23 +29,30 @@ serve(async (req: Request) => {
   });
 
   try {
+    console.log("refresh-markets started");
     const url = new URL(req.url);
     const pages = Math.max(1, Math.min(3, Number(url.searchParams.get("pages") || 2))); // up to 3 pages
     const perPage = Math.max(50, Math.min(250, Number(url.searchParams.get("per_page") || 250)));
 
+    console.log(`Fetching ${pages} pages with ${perPage} coins per page`);
     const allCoins: any[] = [];
 
     for (let page = 1; page <= pages; page++) {
       const cgUrl =
         `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${perPage}&page=${page}&price_change_percentage=1h,24h,7d&locale=en&precision=full`;
 
+      console.log(`Fetching page ${page}...`);
       const res = await fetch(cgUrl, { headers: { "Accept": "application/json" } });
       if (!res.ok) {
         throw new Error(`CoinGecko fetch failed (page ${page}): ${res.status} ${res.statusText}`);
       }
       const data = await res.json();
-      if (Array.isArray(data)) allCoins.push(...data);
+      if (Array.isArray(data)) {
+        console.log(`Received ${data.length} coins from page ${page}`);
+        allCoins.push(...data);
+      }
     }
+    console.log(`Total coins fetched: ${allCoins.length}`);
 
     // Prepare rows
     const coinsRows = allCoins.map((c) => ({
@@ -57,10 +64,10 @@ serve(async (req: Request) => {
 
     const latestRows = allCoins.map((c) => ({
       coin_id: String(c.id),
-      price: toNumber(c.current_price),
+      current_price: toNumber(c.current_price),
       market_cap: toNumber(c.market_cap),
       market_cap_rank: Number.isFinite(c.market_cap_rank) ? c.market_cap_rank : null,
-      volume_24h: toNumber(c.total_volume),
+      total_volume: toNumber(c.total_volume),
       price_change_percentage_1h: toNumber(c.price_change_percentage_1h_in_currency),
       price_change_percentage_24h: toNumber(c.price_change_percentage_24h_in_currency),
       price_change_percentage_7d: toNumber(c.price_change_percentage_7d_in_currency),
@@ -76,27 +83,30 @@ serve(async (req: Request) => {
     }));
 
     // Upsert coins
+    console.log(`Upserting ${coinsRows.length} coins...`);
     const { error: coinsErr } = await supabase.from("coins").upsert(coinsRows, { onConflict: "id" });
     if (coinsErr) throw new Error(`Upsert coins failed: ${coinsErr.message}`);
+    console.log("Coins upserted successfully");
 
     // Upsert latest markets
     // Split into chunks to avoid payload too large
+    console.log(`Upserting ${latestRows.length} market rows...`);
     const chunkSize = 500;
     for (let i = 0; i < latestRows.length; i += chunkSize) {
       const chunk = latestRows.slice(i, i + chunkSize);
+      console.log(`Upserting chunk ${Math.floor(i/chunkSize) + 1}...`);
       const { error: lmErr } = await supabase.from("latest_markets").upsert(chunk, { onConflict: "coin_id" });
       if (lmErr) throw new Error(`Upsert latest_markets failed: ${lmErr.message}`);
     }
+    console.log("Markets upserted successfully");
 
     // Insert history for first page only to limit growth
     const historyRows = latestRows.slice(0, perPage).map((r) => ({
       coin_id: r.coin_id,
-      price: r.price,
+      current_price: r.current_price,
       market_cap: r.market_cap,
-      volume_24h: r.volume_24h,
-      price_change_percentage_1h: r.price_change_percentage_1h,
+      total_volume: r.total_volume,
       price_change_percentage_24h: r.price_change_percentage_24h,
-      price_change_percentage_7d: r.price_change_percentage_7d,
     }));
     if (historyRows.length > 0) {
       const { error: histErr } = await supabase.from("markets_history").insert(historyRows);

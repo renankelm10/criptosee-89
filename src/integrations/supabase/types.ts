@@ -80,7 +80,11 @@ export type Database = {
       latest_markets: {
         Row: {
           ath: number | null
+          ath_change_percentage: number | null
+          ath_date: string | null
           atl: number | null
+          atl_change_percentage: number | null
+          atl_date: string | null
           circulating_supply: number | null
           coin_id: string
           created_at: string | null
@@ -90,6 +94,7 @@ export type Database = {
           market_cap: number | null
           market_cap_rank: number | null
           max_supply: number | null
+          price_change_percentage_1h: number | null
           price_change_percentage_24h: number | null
           price_change_percentage_30d: number | null
           price_change_percentage_7d: number | null
@@ -98,7 +103,11 @@ export type Database = {
         }
         Insert: {
           ath?: number | null
+          ath_change_percentage?: number | null
+          ath_date?: string | null
           atl?: number | null
+          atl_change_percentage?: number | null
+          atl_date?: string | null
           circulating_supply?: number | null
           coin_id: string
           created_at?: string | null
@@ -108,6 +117,7 @@ export type Database = {
           market_cap?: number | null
           market_cap_rank?: number | null
           max_supply?: number | null
+          price_change_percentage_1h?: number | null
           price_change_percentage_24h?: number | null
           price_change_percentage_30d?: number | null
           price_change_percentage_7d?: number | null
@@ -116,7 +126,11 @@ export type Database = {
         }
         Update: {
           ath?: number | null
+          ath_change_percentage?: number | null
+          ath_date?: string | null
           atl?: number | null
+          atl_change_percentage?: number | null
+          atl_date?: string | null
           circulating_supply?: number | null
           coin_id?: string
           created_at?: string | null
@@ -126,6 +140,7 @@ export type Database = {
           market_cap?: number | null
           market_cap_rank?: number | null
           max_supply?: number | null
+          price_change_percentage_1h?: number | null
           price_change_percentage_24h?: number | null
           price_change_percentage_30d?: number | null
           price_change_percentage_7d?: number | null
