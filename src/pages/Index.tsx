@@ -13,6 +13,7 @@ import { useCountdownTimer } from "@/hooks/useCountdownTimer";
 import { RefreshCw, Search, TrendingUp, Zap, Filter, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SEO } from "@/components/SEO";
+import { UserMenu } from "@/components/UserMenu";
 const Index = () => {
   const {
     cryptos,
@@ -142,6 +143,8 @@ const Index = () => {
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                 Atualizar
               </Button>
+
+              <UserMenu />
             </div>
           </div>
 
