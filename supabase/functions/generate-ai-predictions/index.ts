@@ -13,6 +13,20 @@ serve(async (req) => {
   }
 
   try {
+    // Obter userId do header de autorização se houver
+    const authHeader = req.headers.get('authorization');
+    let userId = null;
+    
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      const tempClient = createClient(supabaseUrl!, supabaseKey!);
+      
+      const { data: { user } } = await tempClient.auth.getUser(token);
+      userId = user?.id;
+    }
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -22,6 +36,18 @@ serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Verificar se o usuário tem moedas rastreadas (Premium)
+    let trackedCoins: string[] = [];
+    if (userId) {
+      const { data: tracked } = await supabase
+        .from('user_tracked_coins')
+        .select('coin_id')
+        .eq('user_id', userId);
+      
+      trackedCoins = tracked?.map(t => t.coin_id) || [];
+      console.log(`User ${userId} is tracking ${trackedCoins.length} coins`);
+    }
 
     // Buscar dados de mercado mais recentes
     const { data: markets, error: marketsError } = await supabase
@@ -37,14 +63,33 @@ serve(async (req) => {
 
     console.log(`Fetched ${markets?.length || 0} markets for analysis`);
 
-    // Selecionar moedas para análise (top 10 por volatilidade)
-    const sortedByVolatility = [...(markets || [])].sort((a, b) => 
-      Math.abs(b.price_change_percentage_24h || 0) - Math.abs(a.price_change_percentage_24h || 0)
-    ).slice(0, 10);
+    // Priorizar moedas rastreadas primeiro
+    let selectedCoins = [];
+    
+    if (trackedCoins.length > 0) {
+      // Adicionar moedas rastreadas primeiro
+      const trackedMarkets = markets?.filter(m => trackedCoins.includes(m.coin_id)) || [];
+      selectedCoins = trackedMarkets.slice(0, 5); // Max 5 moedas rastreadas
+      console.log(`Selected ${selectedCoins.length} tracked coins for analysis`);
+    }
+    
+    // Completar com moedas por volatilidade
+    const remaining = 10 - selectedCoins.length;
+    if (remaining > 0) {
+      const sortedByVolatility = [...(markets || [])]
+        .filter(m => !selectedCoins.some(s => s.coin_id === m.coin_id))
+        .sort((a, b) => 
+          Math.abs(b.price_change_percentage_24h || 0) - Math.abs(a.price_change_percentage_24h || 0)
+        )
+        .slice(0, remaining);
+      
+      selectedCoins = [...selectedCoins, ...sortedByVolatility];
+      console.log(`Added ${sortedByVolatility.length} volatile coins, total: ${selectedCoins.length}`);
+    }
 
     const predictions = [];
 
-    for (const market of sortedByVolatility) {
+    for (const market of selectedCoins) {
       const coin = market.coins;
       if (!coin) continue;
 

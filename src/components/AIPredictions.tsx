@@ -15,10 +15,12 @@ import {
   Crown,
   Zap,
   History,
-  Activity
+  Activity,
+  Star
 } from "lucide-react";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { PredictionHistory } from "./PredictionHistory";
+import { CoinTracker } from "./CoinTracker";
 
 interface Prediction {
   id: string;
@@ -99,7 +101,13 @@ export const AIPredictions = () => {
   const generatePredictions = async () => {
     setGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-ai-predictions');
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const { data, error } = await supabase.functions.invoke('generate-ai-predictions', {
+        headers: session?.access_token ? {
+          Authorization: `Bearer ${session.access_token}`
+        } : {}
+      });
       
       if (error) throw error;
       
@@ -197,7 +205,7 @@ export const AIPredictions = () => {
 
       {/* Tab Navigation */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-2xl grid-cols-3">
           <TabsTrigger value="predictions">
             <Activity className="mr-2 h-4 w-4" />
             Palpites Ativos
@@ -205,6 +213,10 @@ export const AIPredictions = () => {
           <TabsTrigger value="history">
             <History className="mr-2 h-4 w-4" />
             Histórico
+          </TabsTrigger>
+          <TabsTrigger value="tracker">
+            <Star className="mr-2 h-4 w-4" />
+            Rastreamento
           </TabsTrigger>
         </TabsList>
 
@@ -383,6 +395,10 @@ export const AIPredictions = () => {
 
         <TabsContent value="history" className="mt-0">
           <PredictionHistory />
+        </TabsContent>
+
+        <TabsContent value="tracker" className="mt-0">
+          <CoinTracker />
         </TabsContent>
       </Tabs>
     </div>

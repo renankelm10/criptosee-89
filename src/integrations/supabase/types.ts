@@ -332,6 +332,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_tracked_coins: {
+        Row: {
+          coin_id: string
+          created_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          coin_id: string
+          created_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          coin_id?: string
+          created_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
