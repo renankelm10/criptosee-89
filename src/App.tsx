@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import CryptoDetail from "./pages/CryptoDetail";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
+import Plans from "./pages/Plans";
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 ///AQUI TEM AS PRIMEIROS FRAMEWORKS: 
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
           <Route path="/crypto/:id" element={<ProtectedRoute><CryptoDetail /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/plans" element={<ProtectedRoute><Plans /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
