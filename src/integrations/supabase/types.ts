@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_predictions: {
+        Row: {
+          action: Database["public"]["Enums"]["ai_action"]
+          actual_outcome: string | null
+          coin_id: string
+          confidence_level: number | null
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          indicators: Json | null
+          performance_score: number | null
+          price_projection: number | null
+          reasoning: string
+          timeframe: string | null
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["ai_action"]
+          actual_outcome?: string | null
+          coin_id: string
+          confidence_level?: number | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          indicators?: Json | null
+          performance_score?: number | null
+          price_projection?: number | null
+          reasoning: string
+          timeframe?: string | null
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["ai_action"]
+          actual_outcome?: string | null
+          coin_id?: string
+          confidence_level?: number | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          indicators?: Json | null
+          performance_score?: number | null
+          price_projection?: number | null
+          reasoning?: string
+          timeframe?: string | null
+        }
+        Relationships: []
+      }
       coins: {
         Row: {
           created_at: string | null
@@ -225,15 +270,85 @@ export type Database = {
         }
         Relationships: []
       }
+      user_prediction_views: {
+        Row: {
+          created_at: string | null
+          id: string
+          prediction_id: string
+          user_id: string
+          viewed_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          prediction_id: string
+          user_id: string
+          viewed_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          prediction_id?: string
+          user_id?: string
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_prediction_views_prediction_id_fkey"
+            columns: ["prediction_id"]
+            isOneToOne: false
+            referencedRelation: "ai_predictions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_subscriptions: {
+        Row: {
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          plan: Database["public"]["Enums"]["subscription_plan"]
+          started_at: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          started_at?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+          started_at?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      count_today_prediction_views: {
+        Args: { user_uuid: string }
+        Returns: number
+      }
+      get_user_plan: {
+        Args: { user_uuid: string }
+        Returns: Database["public"]["Enums"]["subscription_plan"]
+      }
     }
     Enums: {
-      [_ in never]: never
+      ai_action: "buy" | "sell" | "hold" | "watch" | "alert"
+      subscription_plan: "free" | "basic" | "premium"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -360,6 +475,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      ai_action: ["buy", "sell", "hold", "watch", "alert"],
+      subscription_plan: ["free", "basic", "premium"],
+    },
   },
 } as const

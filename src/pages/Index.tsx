@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CryptoCard } from "@/components/CryptoCard";
 import { MarketStats } from "@/components/MarketStats";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
@@ -14,6 +15,7 @@ import { RefreshCw, Search, TrendingUp, Zap, Filter, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SEO } from "@/components/SEO";
 import { UserMenu } from "@/components/UserMenu";
+import { AIPredictions } from "@/components/AIPredictions";
 const Index = () => {
   const {
     cryptos,
@@ -108,6 +110,8 @@ const Index = () => {
         </Card>
       </div>;
   }
+  const [activeTab, setActiveTab] = useState<"markets" | "predictions">("markets");
+
   return <div className="min-h-screen bg-background">
       <SEO title="Criptomoedas em Alta e Volatilidade | CryptoVolatil" description="Acompanhe as moedas mais voláteis, preços e volume em tempo real com dados confiáveis via Supabase." />
       {/* Header */}
@@ -211,7 +215,14 @@ const Index = () => {
 
         {globalData && <MarketStats totalMarketCap={globalData.total_market_cap.usd} totalVolume={globalData.total_volume.usd} activeCoins={globalData.active_cryptocurrencies} dominance={globalData.market_cap_percentage.btc} />}
 
-        {loading ? <LoadingSpinner /> : <>
+        {/* Main Tabs */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="mt-8">
+          <TabsList className="grid grid-cols-2 w-full max-w-md mb-8">
+            <TabsTrigger value="markets">Mercados</TabsTrigger>
+            <TabsTrigger value="predictions">Palpites de IA</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="markets">{loading ? <LoadingSpinner /> : <>
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-foreground">
@@ -252,7 +263,13 @@ const Index = () => {
                   Tente ajustar os filtros ou termo de busca
                 </p>
               </div>}
-          </>}
+          </>}</TabsContent>
+
+          <TabsContent value="predictions">
+            <AIPredictions />
+          </TabsContent>
+        </Tabs>
+
       </div>
     </div>;
 };
