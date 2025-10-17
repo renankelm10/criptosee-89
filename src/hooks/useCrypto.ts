@@ -47,11 +47,35 @@ export const useCrypto = () => {
     }
     
     if (!markets || markets.length === 0) {
-      console.warn('⚠️ Nenhum dado encontrado em latest_markets');
-      throw new Error('Nenhum dado disponível no Supabase');
+      console.warn('⚠️ Nenhum dado encontrado em latest_markets — tentando atualizar via Edge Function');
+      // Tenta popular a base chamando a edge function
+      try {
+        const { data: refreshRes, error: refreshErr } = await supabase.functions.invoke('refresh-markets', {
+          body: { page: 1, per_page: 250 },
+        });
+        if (refreshErr) {
+          console.error('❌ Falha ao invocar refresh-markets:', refreshErr.message);
+        } else {
+          console.log('✅ Edge function executada:', refreshRes);
+          // Aguarda brevemente e tenta buscar novamente
+          await new Promise((r) => setTimeout(r, 1500));
+          const { data: marketsAfter, error: mErr2 } = await supabase
+            .from('latest_markets')
+            .select('*')
+            .order('market_cap_rank', { ascending: true })
+            .limit(500);
+          if (mErr2) throw new Error(`Erro Supabase: ${mErr2.message}`);
+          if (!marketsAfter || marketsAfter.length === 0) {
+            throw new Error('Nenhum dado disponível no Supabase');
+          }
+          // Substitui a variável local para seguir o fluxo
+          // @ts-expect-error reassignment para fluxo local
+          markets = marketsAfter;
+        }
+      } catch (e) {
+        throw e instanceof Error ? e : new Error('Falha ao inicializar dados');
+      }
     }
-
-    console.log(`📊 Encontrados ${markets.length} registros no latest_markets`);
 
     // Buscar informações das moedas
     const ids = markets.map((m: any) => m.coin_id);
@@ -75,13 +99,13 @@ export const useCrypto = () => {
           id: m.coin_id,
           name: c?.name || m.coin_id,
           symbol: (c?.symbol || '').toLowerCase(),
-          current_price: Number(m.price) || 0,
+          current_price: Number(m.current_price) || 0,
           price_change_percentage_24h: Number(m.price_change_percentage_24h) || 0,
-          price_change_percentage_1h_in_currency: Number(m.price_change_percentage_1h) || 0,
+          price_change_percentage_1h_in_currency: m.price_change_percentage_1h != null ? Number(m.price_change_percentage_1h) : undefined,
           market_cap_rank: Number(m.market_cap_rank) || 0,
           image: c?.image || '',
           market_cap: Number(m.market_cap) || 0,
-          total_volume: Number(m.volume_24h) || 0,
+          total_volume: Number(m.total_volume) || 0,
         } as CryptoData;
       })
       .filter(crypto => crypto.current_price > 0) // Filtrar apenas moedas com preço válido

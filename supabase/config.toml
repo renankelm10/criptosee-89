@@ -1,1 +1,4 @@
 project_id = "khcuvryopmaemccrptlk"
+
+[functions.refresh-markets]
+verify_jwt = false

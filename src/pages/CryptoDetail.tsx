@@ -67,7 +67,7 @@ const CryptoDetail = () => {
           supabase.from('coins').select('id,name,symbol,image').eq('id', id).maybeSingle(),
           supabase
             .from('latest_markets')
-            .select('price,market_cap,market_cap_rank,volume_24h,price_change_percentage_24h,price_change_percentage_7d,circulating_supply,total_supply,max_supply')
+            .select('current_price,market_cap,market_cap_rank,total_volume,price_change_percentage_24h,price_change_percentage_7d,circulating_supply,total_supply,max_supply')
             .eq('coin_id', id)
             .maybeSingle(),
         ]);
@@ -79,12 +79,12 @@ const CryptoDetail = () => {
             symbol: coin.symbol,
             image: { large: coin.image },
             market_data: {
-              current_price: { usd: (market?.price as number) ?? 0 },
+              current_price: { usd: (market?.current_price as number) ?? 0 },
               price_change_percentage_24h: (market?.price_change_percentage_24h as number) ?? 0,
               price_change_percentage_7d: (market?.price_change_percentage_7d as number) ?? 0,
               price_change_percentage_30d: 0,
               market_cap: { usd: (market?.market_cap as number) ?? 0 },
-              total_volume: { usd: (market?.volume_24h as number) ?? 0 },
+              total_volume: { usd: (market?.total_volume as number) ?? 0 },
               market_cap_rank: (market?.market_cap_rank as number) ?? 0,
               fully_diluted_valuation: null,
               circulating_supply: (market?.circulating_supply as number) ?? null,
