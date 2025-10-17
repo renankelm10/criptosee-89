@@ -13,9 +13,12 @@ import {
   RefreshCw,
   Lock,
   Crown,
-  Zap
+  Zap,
+  History,
+  Activity
 } from "lucide-react";
 import { LoadingSpinner } from "./LoadingSpinner";
+import { PredictionHistory } from "./PredictionHistory";
 
 interface Prediction {
   id: string;
@@ -46,6 +49,7 @@ export const AIPredictions = () => {
   const [userPlan, setUserPlan] = useState<UserSubscription["plan"]>("free");
   const [viewedToday, setViewedToday] = useState(0);
   const [filter, setFilter] = useState<"all" | "buy" | "sell" | "hold">("all");
+  const [activeTab, setActiveTab] = useState<"predictions" | "history">("predictions");
   const { toast } = useToast();
 
   const canViewMore = () => {
@@ -191,6 +195,21 @@ export const AIPredictions = () => {
         </Button>
       </div>
 
+      {/* Tab Navigation */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="predictions">
+            <Activity className="mr-2 h-4 w-4" />
+            Palpites Ativos
+          </TabsTrigger>
+          <TabsTrigger value="history">
+            <History className="mr-2 h-4 w-4" />
+            Histórico
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="predictions" className="space-y-6">
+
       {/* Plan Badge */}
       <div className="flex items-center gap-3">
         <Badge variant="outline" className="flex items-center gap-2">
@@ -205,16 +224,39 @@ export const AIPredictions = () => {
         )}
       </div>
 
-      {/* Filters */}
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as any)} className="w-full">
-        <TabsList className="grid grid-cols-4 w-full max-w-md">
-          <TabsTrigger value="all">Todos</TabsTrigger>
-          <TabsTrigger value="buy">Comprar</TabsTrigger>
-          <TabsTrigger value="sell">Vender</TabsTrigger>
-          <TabsTrigger value="hold">Manter</TabsTrigger>
-        </TabsList>
+          {/* Filters */}
+          <div className="flex gap-2">
+            <Button 
+              variant={filter === "all" ? "default" : "outline"} 
+              onClick={() => setFilter("all")}
+              size="sm"
+            >
+              Todos
+            </Button>
+            <Button 
+              variant={filter === "buy" ? "default" : "outline"} 
+              onClick={() => setFilter("buy")}
+              size="sm"
+            >
+              Comprar
+            </Button>
+            <Button 
+              variant={filter === "sell" ? "default" : "outline"} 
+              onClick={() => setFilter("sell")}
+              size="sm"
+            >
+              Vender
+            </Button>
+            <Button 
+              variant={filter === "hold" ? "default" : "outline"} 
+              onClick={() => setFilter("hold")}
+              size="sm"
+            >
+              Manter
+            </Button>
+          </div>
 
-        <TabsContent value={filter} className="mt-6">
+          <div className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {displayedPredictions.map((prediction, index) => {
               const isLocked = !canViewMore() && index >= PLAN_LIMITS[userPlan].daily;
@@ -316,28 +358,33 @@ export const AIPredictions = () => {
               </p>
             </div>
           )}
+          </div>
+
+          {/* Upgrade CTA */}
+          {userPlan !== "premium" && (
+            <Card className="p-6 bg-gradient-primary/10 border-primary/20">
+              <div className="flex items-center gap-4">
+                <Crown className="w-12 h-12 text-yellow-500" />
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-foreground mb-1">
+                    Upgrade para Premium
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Acesso ilimitado a palpites, análises detalhadas e projeções de preço
+                  </p>
+                </div>
+                <Button variant="default">
+                  Fazer Upgrade
+                </Button>
+              </div>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="history" className="mt-0">
+          <PredictionHistory />
         </TabsContent>
       </Tabs>
-
-      {/* Upgrade CTA */}
-      {userPlan !== "premium" && (
-        <Card className="p-6 bg-gradient-primary/10 border-primary/20">
-          <div className="flex items-center gap-4">
-            <Crown className="w-12 h-12 text-yellow-500" />
-            <div className="flex-1">
-              <h3 className="text-lg font-bold text-foreground mb-1">
-                Upgrade para Premium
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Acesso ilimitado a palpites, análises detalhadas e projeções de preço
-              </p>
-            </div>
-            <Button variant="default">
-              Fazer Upgrade
-            </Button>
-          </div>
-        </Card>
-      )}
     </div>
   );
 };

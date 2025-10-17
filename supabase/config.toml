@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.generate-ai-predictions]
 verify_jwt = false
+
+[functions.evaluate-predictions]
+verify_jwt = false
