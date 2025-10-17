@@ -14,7 +14,172 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      coins: {
+        Row: {
+          created_at: string | null
+          id: string
+          image: string | null
+          market_cap_rank: number | null
+          name: string
+          symbol: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          image?: string | null
+          market_cap_rank?: number | null
+          name: string
+          symbol: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          image?: string | null
+          market_cap_rank?: number | null
+          name?: string
+          symbol?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      global_market_data: {
+        Row: {
+          active_cryptocurrencies: number | null
+          created_at: string | null
+          id: string
+          market_cap_change_percentage_24h: number | null
+          markets: number | null
+          total_market_cap: number | null
+          total_volume: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          active_cryptocurrencies?: number | null
+          created_at?: string | null
+          id?: string
+          market_cap_change_percentage_24h?: number | null
+          markets?: number | null
+          total_market_cap?: number | null
+          total_volume?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          active_cryptocurrencies?: number | null
+          created_at?: string | null
+          id?: string
+          market_cap_change_percentage_24h?: number | null
+          markets?: number | null
+          total_market_cap?: number | null
+          total_volume?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      latest_markets: {
+        Row: {
+          ath: number | null
+          atl: number | null
+          circulating_supply: number | null
+          coin_id: string
+          created_at: string | null
+          current_price: number | null
+          id: string
+          last_updated: string | null
+          market_cap: number | null
+          max_supply: number | null
+          price_change_percentage_24h: number | null
+          price_change_percentage_30d: number | null
+          price_change_percentage_7d: number | null
+          total_supply: number | null
+          total_volume: number | null
+        }
+        Insert: {
+          ath?: number | null
+          atl?: number | null
+          circulating_supply?: number | null
+          coin_id: string
+          created_at?: string | null
+          current_price?: number | null
+          id?: string
+          last_updated?: string | null
+          market_cap?: number | null
+          max_supply?: number | null
+          price_change_percentage_24h?: number | null
+          price_change_percentage_30d?: number | null
+          price_change_percentage_7d?: number | null
+          total_supply?: number | null
+          total_volume?: number | null
+        }
+        Update: {
+          ath?: number | null
+          atl?: number | null
+          circulating_supply?: number | null
+          coin_id?: string
+          created_at?: string | null
+          current_price?: number | null
+          id?: string
+          last_updated?: string | null
+          market_cap?: number | null
+          max_supply?: number | null
+          price_change_percentage_24h?: number | null
+          price_change_percentage_30d?: number | null
+          price_change_percentage_7d?: number | null
+          total_supply?: number | null
+          total_volume?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "latest_markets_coin_id_fkey"
+            columns: ["coin_id"]
+            isOneToOne: true
+            referencedRelation: "coins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      markets_history: {
+        Row: {
+          coin_id: string
+          created_at: string | null
+          current_price: number | null
+          id: string
+          market_cap: number | null
+          price_change_percentage_24h: number | null
+          timestamp: string | null
+          total_volume: number | null
+        }
+        Insert: {
+          coin_id: string
+          created_at?: string | null
+          current_price?: number | null
+          id?: string
+          market_cap?: number | null
+          price_change_percentage_24h?: number | null
+          timestamp?: string | null
+          total_volume?: number | null
+        }
+        Update: {
+          coin_id?: string
+          created_at?: string | null
+          current_price?: number | null
+          id?: string
+          market_cap?: number | null
+          price_change_percentage_24h?: number | null
+          timestamp?: string | null
+          total_volume?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "markets_history_coin_id_fkey"
+            columns: ["coin_id"]
+            isOneToOne: false
+            referencedRelation: "coins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
