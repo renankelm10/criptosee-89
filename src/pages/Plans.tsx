@@ -7,7 +7,17 @@ import { useNavigate } from "react-router-dom";
 const Plans = () => {
   const navigate = useNavigate();
 
-  const plans = [
+  const plans: Array<{
+    name: string;
+    price: string;
+    period: string;
+    description: string;
+    features: string[];
+    buttonText: string;
+    isCurrentPlan?: boolean;
+    isPopular?: boolean;
+    planType: "free" | "basic" | "premium";
+  }> = [
     {
       name: "Free",
       price: "R$ 0",
@@ -21,7 +31,7 @@ const Plans = () => {
       ],
       buttonText: "Plano Atual",
       isCurrentPlan: true,
-      planType: "free"
+      planType: "free" as const
     },
     {
       name: "Basic",
@@ -38,7 +48,7 @@ const Plans = () => {
       ],
       buttonText: "Assinar Basic",
       isPopular: false,
-      planType: "basic"
+      planType: "basic" as const
     },
     {
       name: "Premium",
@@ -57,7 +67,7 @@ const Plans = () => {
       ],
       buttonText: "Assinar Premium",
       isPopular: true,
-      planType: "premium"
+      planType: "premium" as const
     }
   ];
 
@@ -66,7 +76,6 @@ const Plans = () => {
       <SEO
         title="Planos e Preços - CriptoSee"
         description="Escolha o melhor plano para suas necessidades de análise e investimento em criptomoedas"
-        keywords="planos, preços, assinatura, premium, basic, criptomoedas"
       />
       
       <div className="container mx-auto px-4 py-8">
