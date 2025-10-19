@@ -12,12 +12,13 @@ import {
   Eye, 
   Sparkles, 
   RefreshCw,
-  Lock,
   Crown,
   Zap,
   History,
   Activity,
-  Star
+  Star,
+  Clock,
+  Users
 } from "lucide-react";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { PredictionHistory } from "./PredictionHistory";
@@ -34,33 +35,29 @@ interface Prediction {
   timeframe: string;
   created_at: string;
   risk_score: number;
+  target_plan: "free" | "basic" | "premium";
+  expires_at: string;
 }
 
 interface UserSubscription {
   plan: "free" | "basic" | "premium";
 }
 
-const PLAN_LIMITS = {
-  free: { daily: 3, history: 0, maxRisk: 3 },
-  basic: { daily: 10, history: 7, maxRisk: 7 },
-  premium: { daily: -1, history: -1, maxRisk: 10 } // -1 = unlimited
+const PLAN_INFO = {
+  free: { count: 5, updateHours: 2, updateMinutes: undefined, name: "Gratuito" },
+  basic: { count: 10, updateHours: 1, updateMinutes: undefined, name: "Básico" },
+  premium: { count: 30, updateHours: undefined, updateMinutes: 30, name: "Premium" }
 };
 
 export const AIPredictions = () => {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const [generating, setGenerating] = useState(false);
   const [userPlan, setUserPlan] = useState<UserSubscription["plan"]>("free");
-  const [viewedToday, setViewedToday] = useState(0);
   const [filter, setFilter] = useState<"all" | "buy" | "sell" | "hold">("all");
   const [activeTab, setActiveTab] = useState<"predictions" | "history">("predictions");
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const { toast } = useToast();
-
-  const canViewMore = () => {
-    const limit = PLAN_LIMITS[userPlan].daily;
-    return limit === -1 || viewedToday < limit;
-  };
 
   const fetchUserPlan = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -83,13 +80,16 @@ export const AIPredictions = () => {
       const { data, error } = await supabase
         .from('ai_predictions')
         .select('*')
+        .eq('target_plan', userPlan)
         .gte('expires_at', new Date().toISOString())
-        .lte('risk_score', PLAN_LIMITS[userPlan].maxRisk)
-        .order('confidence_level', { ascending: false })
-        .limit(30);
+        .order('confidence_level', { ascending: false });
 
       if (error) throw error;
       setPredictions(data || []);
+      
+      if (data && data.length > 0) {
+        setLastUpdate(new Date(data[0].created_at));
+      }
     } catch (error) {
       console.error('Error fetching predictions:', error);
       toast({
@@ -102,55 +102,47 @@ export const AIPredictions = () => {
     }
   };
 
-  const generatePredictions = async () => {
-    setGenerating(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      const { data, error } = await supabase.functions.invoke('generate-ai-predictions', {
-        headers: session?.access_token ? {
-          Authorization: `Bearer ${session.access_token}`
-        } : {}
-      });
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Palpites gerados!",
-        description: `${data.predictionsGenerated} novos palpites foram criados.`
-      });
-      
-      await fetchPredictions();
-    } catch (error) {
-      console.error('Error generating predictions:', error);
-      toast({
-        title: "Erro ao gerar palpites",
-        description: "Não foi possível gerar novos palpites.",
-        variant: "destructive"
-      });
-    } finally {
-      setGenerating(false);
+  const getNextUpdateTime = () => {
+    if (!lastUpdate) return "Calculando...";
+    
+    const planInfo = PLAN_INFO[userPlan];
+    const updateInterval = planInfo.updateMinutes 
+      ? planInfo.updateMinutes * 60 * 1000 
+      : planInfo.updateHours * 60 * 60 * 1000;
+    
+    const nextUpdate = new Date(lastUpdate.getTime() + updateInterval);
+    const now = new Date();
+    const diff = nextUpdate.getTime() - now.getTime();
+    
+    if (diff <= 0) return "Em breve...";
+    
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes % 60}m`;
     }
-  };
-
-  const trackView = async (predictionId: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    await supabase
-      .from('user_prediction_views')
-      .insert({
-        user_id: user.id,
-        prediction_id: predictionId
-      });
-
-    setViewedToday(prev => prev + 1);
+    return `${minutes}m`;
   };
 
   useEffect(() => {
     fetchUserPlan();
-    fetchPredictions();
   }, []);
+
+  useEffect(() => {
+    if (userPlan) {
+      fetchPredictions();
+    }
+  }, [userPlan]);
+
+  // Auto-refresh a cada minuto para atualizar o countdown
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchPredictions();
+    }, 60000); // 1 minuto
+
+    return () => clearInterval(interval);
+  }, [userPlan]);
 
   const getActionColor = (action: string) => {
     switch (action) {
@@ -175,36 +167,59 @@ export const AIPredictions = () => {
     filter === "all" || p.action === filter
   );
 
-  const displayedPredictions = userPlan === "premium" 
-    ? filteredPredictions 
-    : filteredPredictions.slice(0, PLAN_LIMITS[userPlan].daily);
-
   if (loading) return <LoadingSpinner />;
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
-            <Sparkles className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-foreground">Palpites de IA</h2>
-            <p className="text-sm text-muted-foreground">
-              Análises inteligentes geradas por IA
-            </p>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-foreground">Palpites de IA</h2>
+              <p className="text-sm text-muted-foreground">
+                Atualizações automáticas para o plano {PLAN_INFO[userPlan].name}
+              </p>
+            </div>
           </div>
         </div>
 
-        <Button 
-          onClick={generatePredictions} 
-          disabled={generating}
-          className="flex items-center gap-2"
-        >
-          <RefreshCw className={`w-4 h-4 ${generating ? 'animate-spin' : ''}`} />
-          Gerar Novos
-        </Button>
+        {/* Info Card */}
+        <Card className="p-4 bg-primary/5 border-primary/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Users className="w-5 h-5 text-primary" />
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {PLAN_INFO[userPlan].count} palpites compartilhados
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Todos os usuários {PLAN_INFO[userPlan].name.toLowerCase()} veem os mesmos palpites
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              {lastUpdate && (
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Última atualização</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              )}
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Próxima em</p>
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  {getNextUpdateTime()}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </Card>
       </div>
 
       {/* Tab Navigation */}
@@ -231,13 +246,11 @@ export const AIPredictions = () => {
         <Badge variant="outline" className="flex items-center gap-2">
           {userPlan === "premium" && <Crown className="w-4 h-4 text-yellow-500" />}
           {userPlan === "basic" && <Zap className="w-4 h-4 text-blue-500" />}
-          Plano: {userPlan === "premium" ? "Premium" : userPlan === "basic" ? "Básico" : "Gratuito"}
+          Plano: {PLAN_INFO[userPlan].name}
         </Badge>
-        {PLAN_LIMITS[userPlan].daily !== -1 && (
-          <Badge variant="outline">
-            {viewedToday}/{PLAN_LIMITS[userPlan].daily} palpites visualizados hoje
-          </Badge>
-        )}
+        <Badge variant="outline">
+          {filteredPredictions.length} palpites ativos
+        </Badge>
       </div>
 
           {/* Filters */}
@@ -274,25 +287,11 @@ export const AIPredictions = () => {
 
           <div className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {displayedPredictions.map((prediction, index) => {
-              const isLocked = !canViewMore() && index >= PLAN_LIMITS[userPlan].daily;
-
-              return (
+            {filteredPredictions.map((prediction) => (
                 <Card 
                   key={prediction.id} 
-                  className={`p-6 backdrop-blur-lg border-border/50 ${
-                    isLocked ? 'opacity-50 relative' : ''
-                  }`}
-                  onClick={() => !isLocked && trackView(prediction.id)}
+                  className="p-6 backdrop-blur-lg border-border/50"
                 >
-                  {isLocked && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg z-10">
-                      <div className="text-center space-y-2">
-                        <Lock className="w-8 h-8 mx-auto text-muted-foreground" />
-                        <p className="text-sm font-medium">Upgrade para ver mais</p>
-                      </div>
-                    </div>
-                  )}
 
                   {/* Action Badge */}
                   <div className="flex items-center justify-between mb-4">
@@ -367,11 +366,10 @@ export const AIPredictions = () => {
                     {new Date(prediction.created_at).toLocaleString('pt-BR')}
                   </p>
                 </Card>
-              );
-            })}
+              ))}
           </div>
 
-          {displayedPredictions.length === 0 && (
+          {filteredPredictions.length === 0 && (
             <div className="text-center py-12">
               <Sparkles className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-xl font-semibold text-foreground mb-2">

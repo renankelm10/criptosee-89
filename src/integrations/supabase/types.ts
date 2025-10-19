@@ -28,6 +28,7 @@ export type Database = {
           price_projection: number | null
           reasoning: string
           risk_score: number | null
+          target_plan: Database["public"]["Enums"]["subscription_plan"]
           timeframe: string | null
         }
         Insert: {
@@ -43,6 +44,7 @@ export type Database = {
           price_projection?: number | null
           reasoning: string
           risk_score?: number | null
+          target_plan?: Database["public"]["Enums"]["subscription_plan"]
           timeframe?: string | null
         }
         Update: {
@@ -58,6 +60,7 @@ export type Database = {
           price_projection?: number | null
           reasoning?: string
           risk_score?: number | null
+          target_plan?: Database["public"]["Enums"]["subscription_plan"]
           timeframe?: string | null
         }
         Relationships: []
@@ -273,45 +276,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_prediction_views: {
-        Row: {
-          created_at: string | null
-          id: string
-          prediction_id: string
-          user_id: string
-          viewed_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          prediction_id: string
-          user_id: string
-          viewed_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          prediction_id?: string
-          user_id?: string
-          viewed_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_prediction_views_prediction_id_fkey"
-            columns: ["prediction_id"]
-            isOneToOne: false
-            referencedRelation: "active_predictions_by_risk"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_prediction_views_prediction_id_fkey"
-            columns: ["prediction_id"]
-            isOneToOne: false
-            referencedRelation: "ai_predictions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       user_subscriptions: {
         Row: {
           created_at: string | null
@@ -391,10 +355,6 @@ export type Database = {
       cleanup_expired_predictions: {
         Args: Record<PropertyKey, never>
         Returns: undefined
-      }
-      count_today_prediction_views: {
-        Args: { user_uuid: string }
-        Returns: number
       }
       get_user_plan: {
         Args: { user_uuid: string }
