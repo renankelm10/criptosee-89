@@ -166,6 +166,17 @@ export const AIPredictions = () => {
     }
   };
 
+  const getActionLabel = (action: string) => {
+    switch (action) {
+      case "buy": return "Comprar";
+      case "sell": return "Vender";
+      case "hold": return "Manter";
+      case "watch": return "Observar";
+      case "alert": return "Alerta";
+      default: return action;
+    }
+  };
+
   const filteredPredictions = predictions.filter(p => 
     filter === "all" || p.action === filter
   );
@@ -305,7 +316,7 @@ export const AIPredictions = () => {
                     <div className={`flex items-center gap-2 ${getActionColor(prediction.action)}`}>
                       {getActionIcon(prediction.action)}
                       <span className="font-bold uppercase text-sm">
-                        {prediction.action}
+                        {getActionLabel(prediction.action)}
                       </span>
                     </div>
                     <Badge variant="outline">

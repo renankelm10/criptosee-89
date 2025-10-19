@@ -74,6 +74,17 @@ export const PredictionDetailDialog = ({
     return "text-red-500";
   };
 
+  const getActionLabel = (action: string) => {
+    switch (action) {
+      case "buy": return "Comprar";
+      case "sell": return "Vender";
+      case "hold": return "Manter";
+      case "watch": return "Observar";
+      case "alert": return "Alerta";
+      default: return action;
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -104,7 +115,7 @@ export const PredictionDetailDialog = ({
               <div className={`flex items-center gap-2 ${getActionColor(prediction.action)} p-3 rounded-lg`}>
                 {getActionIcon(prediction.action)}
                 <span className="font-bold uppercase text-lg">
-                  {prediction.action}
+                  {getActionLabel(prediction.action)}
                 </span>
               </div>
             </div>
