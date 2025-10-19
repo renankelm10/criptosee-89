@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -48,6 +49,7 @@ const PLAN_LIMITS = {
 export const AIPredictions = () => {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
   const [generating, setGenerating] = useState(false);
   const [userPlan, setUserPlan] = useState<UserSubscription["plan"]>("free");
   const [viewedToday, setViewedToday] = useState(0);
@@ -395,7 +397,7 @@ export const AIPredictions = () => {
                     Acesso ilimitado a palpites, análises detalhadas e projeções de preço
                   </p>
                 </div>
-                <Button variant="default">
+                <Button variant="default" onClick={() => navigate('/plans')}>
                   Fazer Upgrade
                 </Button>
               </div>
