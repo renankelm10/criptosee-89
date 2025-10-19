@@ -95,6 +95,27 @@ export type Database = {
         }
         Relationships: []
       }
+      generation_locks: {
+        Row: {
+          is_generating: boolean | null
+          last_generated_at: string | null
+          locked_at: string | null
+          plan: Database["public"]["Enums"]["subscription_plan"]
+        }
+        Insert: {
+          is_generating?: boolean | null
+          last_generated_at?: string | null
+          locked_at?: string | null
+          plan: Database["public"]["Enums"]["subscription_plan"]
+        }
+        Update: {
+          is_generating?: boolean | null
+          last_generated_at?: string | null
+          locked_at?: string | null
+          plan?: Database["public"]["Enums"]["subscription_plan"]
+        }
+        Relationships: []
+      }
       global_market_data: {
         Row: {
           active_cryptocurrencies: number | null

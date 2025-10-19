@@ -12,8 +12,13 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const startTime = Date.now();
+  const PLAN = 'free';
+  const TARGET_COUNT = 5;
+  const EXPIRES_IN_HOURS = 2;
+
   try {
-    console.log('🚀 Starting FREE plan predictions generation');
+    console.log(`🚀 Starting ${PLAN.toUpperCase()} plan predictions generation`);
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -25,43 +30,102 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Deletar predições antigas do plano FREE
-    const { error: deleteError } = await supabase
-      .from('ai_predictions')
-      .delete()
-      .eq('target_plan', 'free');
+    // 1. Verificar e adquirir lock
+    const { data: lockCheck } = await supabase
+      .from('generation_locks')
+      .select('is_generating, locked_at')
+      .eq('plan', PLAN)
+      .single();
 
-    if (deleteError) {
-      console.error('Error deleting old predictions:', deleteError);
-    } else {
-      console.log('✅ Deleted old FREE predictions');
+    // Se lock está preso há mais de 2 minutos, liberar
+    if (lockCheck?.is_generating && lockCheck.locked_at) {
+      const lockAge = Date.now() - new Date(lockCheck.locked_at).getTime();
+      if (lockAge > 120000) {
+        console.log('🔓 Releasing stuck lock');
+        await supabase
+          .from('generation_locks')
+          .update({ is_generating: false })
+          .eq('plan', PLAN);
+      } else {
+        console.log('⚠️ Generation already in progress, skipping');
+        return new Response(JSON.stringify({ 
+          skipped: true, 
+          reason: 'already_generating',
+          locked_for_ms: lockAge 
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
     }
 
-    // Buscar TOP 10 moedas mais estáveis (maior market cap)
-    const { data: markets, error: marketsError } = await supabase
-      .from('latest_markets')
-      .select(`
-        *,
-        coins!inner(id, symbol, name, image)
-      `)
-      .order('market_cap_rank', { ascending: true })
-      .limit(10);
+    // Adquirir lock
+    await supabase
+      .from('generation_locks')
+      .update({
+        is_generating: true,
+        locked_at: new Date().toISOString()
+      })
+      .eq('plan', PLAN);
 
-    if (marketsError) throw marketsError;
-    if (!markets || markets.length === 0) {
-      throw new Error('No markets data available');
-    }
+    try {
+      // 2. Verificar quantos palpites válidos já existem
+      const { count: existingCount } = await supabase
+        .from('ai_predictions')
+        .select('*', { count: 'exact', head: true })
+        .eq('target_plan', PLAN)
+        .gte('expires_at', new Date().toISOString());
 
-    console.log(`Fetched ${markets.length} top stable coins for FREE plan`);
+      if (existingCount && existingCount >= TARGET_COUNT) {
+        console.log(`⚠️ Already have ${existingCount} valid predictions, skipping generation`);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          skipped: true,
+          reason: 'predictions_already_exist',
+          count: existingCount,
+          plan: PLAN
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
 
-    const predictions = [];
+      // 3. Deletar predições antigas/expiradas do plano
+      const { error: deleteError } = await supabase
+        .from('ai_predictions')
+        .delete()
+        .eq('target_plan', PLAN);
 
-    // Gerar exatamente 5 palpites de baixo risco
-    for (let i = 0; i < Math.min(5, markets.length); i++) {
-      const market = markets[i];
-      const coin = (market as any).coins;
+      if (deleteError) {
+        console.error('Error deleting old predictions:', deleteError);
+      } else {
+        console.log(`✅ Deleted old ${PLAN.toUpperCase()} predictions`);
+      }
 
-      const prompt = `Você é um analista de criptomoedas especializado. Analise a seguinte moeda e forneça uma previsão SEGURA E CONSERVADORA para as próximas 24h:
+      // 4. Buscar TOP 10 moedas mais estáveis (maior market cap)
+      const { data: markets, error: marketsError } = await supabase
+        .from('latest_markets')
+        .select(`
+          *,
+          coins!inner(id, symbol, name, image)
+        `)
+        .order('market_cap_rank', { ascending: true })
+        .limit(10);
+
+      if (marketsError) throw marketsError;
+      if (!markets || markets.length === 0) {
+        throw new Error('No markets data available');
+      }
+
+      console.log(`📊 Fetched ${markets.length} top stable coins for ${PLAN.toUpperCase()} plan`);
+
+      const predictions = [];
+
+      // 5. Gerar exatamente TARGET_COUNT palpites de baixo risco
+      for (let i = 0; i < Math.min(TARGET_COUNT, markets.length); i++) {
+        const market = markets[i];
+        const coin = (market as any).coins;
+
+        const prompt = `Você é um analista de criptomoedas especializado. Analise a seguinte moeda e forneça uma previsão SEGURA E CONSERVADORA para as próximas 24h:
 
 Moeda: ${coin.name} (${coin.symbol})
 Preço Atual: $${market.current_price}
@@ -96,99 +160,121 @@ Com base nesses dados, forneça uma análise em formato JSON:
 
 CRÍTICO: Retorne APENAS o JSON válido, sem texto adicional.`;
 
-      try {
-        const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openaiApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              {
-                role: 'system',
-                content: 'Você é um analista de criptomoedas conservador que fornece análises seguras para investidores iniciantes no plano gratuito.'
-              },
-              { role: 'user', content: prompt }
-            ],
-            temperature: 0.7,
-          }),
-        });
-
-        if (!openaiResponse.ok) {
-          const errorText = await openaiResponse.text();
-          console.error(`OpenAI API error for ${coin.symbol}:`, errorText);
-          continue;
-        }
-
-        const aiData = await openaiResponse.json();
-        const content = aiData.choices[0]?.message?.content;
-
-        if (!content) {
-          console.error(`No content from AI for ${coin.symbol}`);
-          continue;
-        }
-
-        let analysis;
         try {
-          const jsonMatch = content.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            analysis = JSON.parse(jsonMatch[0]);
-          } else {
-            analysis = JSON.parse(content);
+          const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openaiApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                {
+                  role: 'system',
+                  content: 'Você é um analista de criptomoedas conservador que fornece análises seguras para investidores iniciantes no plano gratuito.'
+                },
+                { role: 'user', content: prompt }
+              ],
+              temperature: 0.7,
+            }),
+          });
+
+          if (!openaiResponse.ok) {
+            const errorText = await openaiResponse.text();
+            console.error(`OpenAI API error for ${coin.symbol}:`, errorText);
+            continue;
           }
-        } catch (parseError) {
-          console.error(`Failed to parse AI response for ${coin.symbol}:`, content);
-          continue;
+
+          const aiData = await openaiResponse.json();
+          const content = aiData.choices[0]?.message?.content;
+
+          if (!content) {
+            console.error(`No content from AI for ${coin.symbol}`);
+            continue;
+          }
+
+          let analysis;
+          try {
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              analysis = JSON.parse(jsonMatch[0]);
+            } else {
+              analysis = JSON.parse(content);
+            }
+          } catch (parseError) {
+            console.error(`Failed to parse AI response for ${coin.symbol}:`, content);
+            continue;
+          }
+
+          // Garantir que o riskScore seja baixo (1-3)
+          const riskScore = Math.min(3, Math.max(1, analysis.riskScore || 2));
+
+          const prediction = {
+            coin_id: coin.id,
+            action: analysis.action,
+            confidence_level: analysis.confidenceLevel,
+            reasoning: analysis.reasoning,
+            indicators: analysis.indicators,
+            price_projection: analysis.priceProjection,
+            timeframe: '24h',
+            risk_score: riskScore,
+            target_plan: PLAN,
+            expires_at: new Date(Date.now() + EXPIRES_IN_HOURS * 60 * 60 * 1000).toISOString(),
+          };
+
+          const { error: insertError } = await supabase
+            .from('ai_predictions')
+            .insert(prediction);
+
+          if (insertError) {
+            console.error(`Failed to insert prediction for ${coin.symbol}:`, insertError);
+          } else {
+            console.log(`✅ Prediction created for ${coin.symbol}: ${analysis.action} (${analysis.confidenceLevel}%)`);
+            predictions.push(prediction);
+          }
+        } catch (error) {
+          console.error(`Error processing ${coin.symbol}:`, error);
         }
-
-        // Garantir que o riskScore seja baixo (1-3)
-        const riskScore = Math.min(3, Math.max(1, analysis.riskScore || 2));
-
-        const prediction = {
-          coin_id: coin.id,
-          action: analysis.action,
-          confidence_level: analysis.confidenceLevel,
-          reasoning: analysis.reasoning,
-          indicators: analysis.indicators,
-          price_projection: analysis.priceProjection,
-          timeframe: '24h',
-          risk_score: riskScore,
-          target_plan: 'free',
-          expires_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2 horas
-        };
-
-        const { error: insertError } = await supabase
-          .from('ai_predictions')
-          .insert(prediction);
-
-        if (insertError) {
-          console.error(`Failed to insert prediction for ${coin.symbol}:`, insertError);
-        } else {
-          console.log(`✅ Prediction created for ${coin.symbol}: ${analysis.action} (${analysis.confidenceLevel}%)`);
-          predictions.push(prediction);
-        }
-      } catch (error) {
-        console.error(`Error processing ${coin.symbol}:`, error);
       }
+
+      const duration = Date.now() - startTime;
+      console.log(`
+📊 ${PLAN.toUpperCase()} Plan Generation Summary:
+  - Target count: ${TARGET_COUNT}
+  - Generated predictions: ${predictions.length}
+  - Duration: ${duration}ms
+  - Expires in: ${EXPIRES_IN_HOURS} hours
+      `);
+
+      return new Response(JSON.stringify({
+        success: true,
+        count: predictions.length,
+        plan: PLAN,
+        expires_in_hours: EXPIRES_IN_HOURS,
+        duration_ms: duration
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+
+    } finally {
+      // SEMPRE liberar lock, mesmo em caso de erro
+      await supabase
+        .from('generation_locks')
+        .update({
+          is_generating: false,
+          last_generated_at: new Date().toISOString()
+        })
+        .eq('plan', PLAN);
+      
+      console.log('🔓 Lock released');
     }
 
-    console.log(`✅ Generated ${predictions.length} predictions for FREE plan`);
-
-    return new Response(JSON.stringify({
-      success: true,
-      count: predictions.length,
-      plan: 'free',
-      expires_in_hours: 2
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-
   } catch (error) {
-    console.error('Error in generate-predictions-free:', error);
+    console.error(`Error in generate-predictions-${PLAN}:`, error);
     return new Response(JSON.stringify({
-      error: error.message
+      error: error.message,
+      plan: PLAN
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
