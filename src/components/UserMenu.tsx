@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, LogOut, Settings } from 'lucide-react';
+import { User, LogOut, Crown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export function UserMenu() {
@@ -59,6 +59,10 @@ export function UserMenu() {
         <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer">
           <User className="mr-2 h-4 w-4" />
           <span>Meu Perfil</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate('/plans')} className="cursor-pointer">
+          <Crown className="mr-2 h-4 w-4 text-primary" />
+          <span className="text-primary font-semibold">Ver Planos</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={signOut} className="cursor-pointer text-destructive">
