@@ -27,6 +27,7 @@ export type Database = {
           performance_score: number | null
           price_projection: number | null
           reasoning: string
+          risk_score: number | null
           timeframe: string | null
         }
         Insert: {
@@ -41,6 +42,7 @@ export type Database = {
           performance_score?: number | null
           price_projection?: number | null
           reasoning: string
+          risk_score?: number | null
           timeframe?: string | null
         }
         Update: {
@@ -55,6 +57,7 @@ export type Database = {
           performance_score?: number | null
           price_projection?: number | null
           reasoning?: string
+          risk_score?: number | null
           timeframe?: string | null
         }
         Relationships: []
@@ -297,6 +300,13 @@ export type Database = {
             foreignKeyName: "user_prediction_views_prediction_id_fkey"
             columns: ["prediction_id"]
             isOneToOne: false
+            referencedRelation: "active_predictions_by_risk"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_prediction_views_prediction_id_fkey"
+            columns: ["prediction_id"]
+            isOneToOne: false
             referencedRelation: "ai_predictions"
             referencedColumns: ["id"]
           },
@@ -355,9 +365,33 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      active_predictions_by_risk: {
+        Row: {
+          action: Database["public"]["Enums"]["ai_action"] | null
+          actual_outcome: string | null
+          coin_id: string | null
+          coin_image: string | null
+          coin_name: string | null
+          coin_symbol: string | null
+          confidence_level: number | null
+          created_at: string | null
+          expires_at: string | null
+          id: string | null
+          indicators: Json | null
+          performance_score: number | null
+          price_projection: number | null
+          reasoning: string | null
+          risk_score: number | null
+          timeframe: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      cleanup_expired_predictions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       count_today_prediction_views: {
         Args: { user_uuid: string }
         Returns: number
