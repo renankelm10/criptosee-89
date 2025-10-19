@@ -11,7 +11,7 @@ import { EmailNotifications } from "@/components/EmailNotifications";
 import { useCrypto } from "@/hooks/useCrypto";
 import { useVolatilityNotifier } from "@/hooks/useVolatilityNotifier";
 import { useCountdownTimer } from "@/hooks/useCountdownTimer";
-import { RefreshCw, Search, TrendingUp, Zap, Filter, Mail } from "lucide-react";
+import { RefreshCw, Search, TrendingUp, Zap, Filter, Mail, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SEO } from "@/components/SEO";
 import { UserMenu } from "@/components/UserMenu";
@@ -219,7 +219,19 @@ const Index = () => {
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="mt-8">
           <TabsList className="grid grid-cols-2 w-full max-w-md mb-8">
             <TabsTrigger value="markets">Mercados</TabsTrigger>
-            <TabsTrigger value="predictions">Palpites de IA</TabsTrigger>
+            <TabsTrigger 
+              value="predictions" 
+              className="relative overflow-hidden group data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-primary/80 data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg hover:scale-105 transition-all"
+            >
+              <span className="relative z-10 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 animate-pulse" />
+                Palpites de IA
+                <Badge variant="secondary" className="ml-1 bg-primary/20 text-primary-foreground text-xs px-1.5 py-0 data-[state=active]:bg-white/20">
+                  NOVO
+                </Badge>
+              </span>
+              <span className="absolute inset-0 bg-gradient-to-r from-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="markets">{loading ? <LoadingSpinner /> : <>
