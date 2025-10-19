@@ -108,6 +108,13 @@ Analise a criptomoeda ${coin.name} (${coin.symbol.toUpperCase()}) com os seguint
 - ATH: $${market.ath} (${market.ath_change_percentage?.toFixed(2)}%)
 - ATL: $${market.atl} (${market.atl_change_percentage?.toFixed(2)}%)
 
+IMPORTANTE SOBRE RISK SCORE - Use distribuição balanceada:
+- Moedas TOP 10 consolidadas (BTC, ETH, BNB, USDT, SOL): riskScore 1-3
+- Moedas TOP 20-50 estabelecidas: riskScore 2-5
+- Moedas de média cap com boa liquidez: riskScore 4-7
+- Moedas voláteis ou memecoins: riskScore 6-10
+- Considere: Baixa volatilidade = Baixo risco, Alta volatilidade = Alto risco
+
 Com base nesses dados, forneça uma análise em formato JSON com a seguinte estrutura:
 {
   "action": "buy" | "sell" | "hold" | "watch" | "alert",
@@ -120,7 +127,7 @@ Com base nesses dados, forneça uma análise em formato JSON com a seguinte estr
   },
   "priceProjection": número (projeção de preço para próximas 24h),
   "timeframe": "24h",
-  "riskScore": 1-10 (1=baixo risco, 10=alto risco, baseado em volatilidade e incerteza do mercado)
+  "riskScore": 1-10 (SEJA REALISTA: top 10 = 1-3, mid cap = 4-7, voláteis = 7-10)
 }
 
 IMPORTANTE: Retorne APENAS o JSON válido, sem texto adicional.`;
