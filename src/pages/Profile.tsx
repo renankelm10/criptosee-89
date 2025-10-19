@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -8,10 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, Mail, Lock, Camera, ArrowLeft } from 'lucide-react';
+import { User, Mail, Lock, Camera, ArrowLeft, Crown, Zap } from 'lucide-react';
 import { SEO } from '@/components/SEO';
 import { useNavigate } from 'react-router-dom';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const profileSchema = z.object({
   fullName: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').max(100).trim()
@@ -31,9 +34,12 @@ type PasswordForm = z.infer<typeof passwordSchema>;
 export default function Profile() {
   const { user, profile, updateProfile, updatePassword, uploadAvatar } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isLoadingPassword, setIsLoadingPassword] = useState(false);
   const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState<'free' | 'basic' | 'premium'>('free');
+  const [isUpdatingPlan, setIsUpdatingPlan] = useState(false);
 
   const profileForm = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
@@ -96,6 +102,63 @@ export default function Profile() {
     return user?.email?.[0].toUpperCase() || 'U';
   };
 
+  useEffect(() => {
+    const fetchUserPlan = async () => {
+      if (!user) return;
+      
+      const { data, error } = await supabase
+        .from('user_subscriptions')
+        .select('plan')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!error && data) {
+        setCurrentPlan(data.plan);
+      }
+    };
+
+    fetchUserPlan();
+  }, [user]);
+
+  const updatePlan = async (newPlan: 'free' | 'basic' | 'premium') => {
+    if (!user) return;
+    
+    setIsUpdatingPlan(true);
+    try {
+      const { error } = await supabase
+        .from('user_subscriptions')
+        .update({ plan: newPlan })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setCurrentPlan(newPlan);
+      toast({
+        title: "Plano atualizado!",
+        description: `Seu plano foi alterado para ${newPlan === 'premium' ? 'Premium' : newPlan === 'basic' ? 'Básico' : 'Gratuito'}.`
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao atualizar plano",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdatingPlan(false);
+    }
+  };
+
+  const getPlanBadge = () => {
+    switch (currentPlan) {
+      case 'premium':
+        return <Badge className="bg-gradient-primary text-white"><Crown className="w-3 h-3 mr-1" />Premium</Badge>;
+      case 'basic':
+        return <Badge variant="secondary"><Zap className="w-3 h-3 mr-1" />Básico</Badge>;
+      default:
+        return <Badge variant="outline">Gratuito</Badge>;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-crypto-primary/5">
       <SEO 
@@ -139,6 +202,63 @@ export default function Profile() {
               <div className="text-center sm:text-left">
                 <h1 className="text-3xl font-bold text-foreground">{profile?.full_name || 'Usuário'}</h1>
                 <p className="text-muted-foreground">{user?.email}</p>
+              </div>
+            </div>
+          </Card>
+
+          {/* Plano e Assinatura */}
+          <Card className="p-6 backdrop-blur-lg bg-card/80 border-border">
+            <div className="flex items-center gap-2 mb-6">
+              <Crown className="w-5 h-5 text-primary" />
+              <h2 className="text-xl font-semibold">Plano e Assinatura</h2>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Plano atual</p>
+                {getPlanBadge()}
+              </div>
+
+              <Separator />
+
+              <div className="space-y-3">
+                <p className="text-sm font-medium">Alterar plano (Desenvolvimento)</p>
+                <div className="flex gap-2">
+                  <Button 
+                    variant={currentPlan === 'free' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => updatePlan('free')}
+                    disabled={isUpdatingPlan || currentPlan === 'free'}
+                  >
+                    Gratuito
+                  </Button>
+                  <Button 
+                    variant={currentPlan === 'basic' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => updatePlan('basic')}
+                    disabled={isUpdatingPlan || currentPlan === 'basic'}
+                  >
+                    <Zap className="w-3 h-3 mr-1" />
+                    Básico
+                  </Button>
+                  <Button 
+                    variant={currentPlan === 'premium' ? 'default' : 'outline'} 
+                    size="sm"
+                    onClick={() => updatePlan('premium')}
+                    disabled={isUpdatingPlan || currentPlan === 'premium'}
+                  >
+                    <Crown className="w-3 h-3 mr-1" />
+                    Premium
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Ou visite a <span 
+                    className="text-primary cursor-pointer hover:underline"
+                    onClick={() => navigate('/plans')}
+                  >
+                    página de planos
+                  </span> para mais informações
+                </p>
               </div>
             </div>
           </Card>
