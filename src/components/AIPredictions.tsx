@@ -32,6 +32,7 @@ interface Prediction {
   price_projection: number;
   timeframe: string;
   created_at: string;
+  risk_score: number;
 }
 
 interface UserSubscription {
@@ -39,9 +40,9 @@ interface UserSubscription {
 }
 
 const PLAN_LIMITS = {
-  free: { daily: 3, history: 0 },
-  basic: { daily: 5, history: 7 },
-  premium: { daily: -1, history: -1 } // -1 = unlimited
+  free: { daily: 3, history: 0, maxRisk: 3 },
+  basic: { daily: 10, history: 7, maxRisk: 7 },
+  premium: { daily: -1, history: -1, maxRisk: 10 } // -1 = unlimited
 };
 
 export const AIPredictions = () => {
@@ -81,8 +82,9 @@ export const AIPredictions = () => {
         .from('ai_predictions')
         .select('*')
         .gte('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(20);
+        .lte('risk_score', PLAN_LIMITS[userPlan].maxRisk)
+        .order('confidence_level', { ascending: false })
+        .limit(30);
 
       if (error) throw error;
       setPredictions(data || []);
@@ -313,8 +315,16 @@ export const AIPredictions = () => {
                     {prediction.reasoning}
                   </p>
 
-                  {/* Indicators */}
-                  {userPlan !== "free" && (
+                   {/* Risk Score */}
+                   <div className="flex items-center justify-between text-xs mb-4 p-2 bg-muted/50 rounded">
+                     <span className="text-muted-foreground">Risco:</span>
+                     <Badge variant={prediction.risk_score <= 3 ? "default" : prediction.risk_score <= 7 ? "secondary" : "destructive"}>
+                       {prediction.risk_score}/10
+                     </Badge>
+                   </div>
+
+                   {/* Indicators */}
+                   {userPlan !== "free" && (
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">Volatilidade:</span>
@@ -335,7 +345,7 @@ export const AIPredictions = () => {
                         </Badge>
                       </div>
                     </div>
-                  )}
+                   )}
 
                   {/* Price Projection (Premium only) */}
                   {userPlan === "premium" && prediction.price_projection && (

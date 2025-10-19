@@ -67,14 +67,15 @@ serve(async (req) => {
     let selectedCoins = [];
     
     if (trackedCoins.length > 0) {
-      // Adicionar moedas rastreadas primeiro
+      // Adicionar moedas rastreadas primeiro (até 10)
       const trackedMarkets = markets?.filter(m => trackedCoins.includes(m.coin_id)) || [];
-      selectedCoins = trackedMarkets.slice(0, 5); // Max 5 moedas rastreadas
+      selectedCoins = trackedMarkets.slice(0, 10);
       console.log(`Selected ${selectedCoins.length} tracked coins for analysis`);
     }
     
-    // Completar com moedas por volatilidade
-    const remaining = 10 - selectedCoins.length;
+    // Completar com moedas por volatilidade (target: 20-30 total)
+    const targetCount = Math.floor(Math.random() * 11) + 20; // 20-30
+    const remaining = targetCount - selectedCoins.length;
     if (remaining > 0) {
       const sortedByVolatility = [...(markets || [])]
         .filter(m => !selectedCoins.some(s => s.coin_id === m.coin_id))
@@ -118,7 +119,8 @@ Com base nesses dados, forneça uma análise em formato JSON com a seguinte estr
     "momentum": "strong" | "moderate" | "weak"
   },
   "priceProjection": número (projeção de preço para próximas 24h),
-  "timeframe": "24h"
+  "timeframe": "24h",
+  "riskScore": 1-10 (1=baixo risco, 10=alto risco, baseado em volatilidade e incerteza do mercado)
 }
 
 IMPORTANTE: Retorne APENAS o JSON válido, sem texto adicional.`;
@@ -187,6 +189,7 @@ IMPORTANTE: Retorne APENAS o JSON válido, sem texto adicional.`;
             indicators: analysis.indicators,
             price_projection: analysis.priceProjection,
             timeframe: analysis.timeframe || '24h',
+            risk_score: analysis.riskScore || 5,
             expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
           });
 
