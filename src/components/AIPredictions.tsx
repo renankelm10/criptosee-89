@@ -23,6 +23,7 @@ import {
 import { LoadingSpinner } from "./LoadingSpinner";
 import { PredictionHistory } from "./PredictionHistory";
 import { CoinTracker } from "./CoinTracker";
+import { PredictionDetailDialog } from "./PredictionDetailDialog";
 
 interface Prediction {
   id: string;
@@ -57,6 +58,8 @@ export const AIPredictions = () => {
   const [filter, setFilter] = useState<"all" | "buy" | "sell" | "hold">("all");
   const [activeTab, setActiveTab] = useState<"predictions" | "history">("predictions");
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [selectedPrediction, setSelectedPrediction] = useState<Prediction | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const fetchUserPlan = async () => {
@@ -290,7 +293,11 @@ export const AIPredictions = () => {
             {filteredPredictions.map((prediction) => (
                 <Card 
                   key={prediction.id} 
-                  className="p-6 backdrop-blur-lg border-border/50"
+                  className="p-6 backdrop-blur-lg border-border/50 cursor-pointer hover:border-primary/50 transition-colors"
+                  onClick={() => {
+                    setSelectedPrediction(prediction);
+                    setIsDialogOpen(true);
+                  }}
                 >
 
                   {/* Action Badge */}
@@ -411,6 +418,13 @@ export const AIPredictions = () => {
           <CoinTracker />
         </TabsContent>
       </Tabs>
+
+      <PredictionDetailDialog
+        prediction={selectedPrediction}
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        userPlan={userPlan}
+      />
     </div>
   );
 };
