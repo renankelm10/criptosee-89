@@ -115,39 +115,60 @@ serve(async (req) => {
         console.log(`✅ Deleted old ${PLAN.toUpperCase()} predictions`);
       }
 
-      // 4. Buscar TOP 50 moedas (mix de estáveis + voláteis)
-      const { data: markets, error: marketsError } = await supabase
+      // 4. ESTRATÉGIA FOCADA EM VOLATILIDADE - Ampliar busca para TOP 100
+      const { data: allMarkets } = await supabase
         .from('latest_markets')
         .select(`
           *,
           coins!inner(id, symbol, name, image)
         `)
         .order('market_cap_rank', { ascending: true })
-        .limit(50);
+        .limit(100);
 
-      if (marketsError) throw marketsError;
-      if (!markets || markets.length === 0) {
+      if (!allMarkets || allMarkets.length === 0) {
         throw new Error('No markets data available');
       }
 
-      // Ordenar por volatilidade (abs price change 24h) e pegar mix
-      const sortedByVolatility = [...markets].sort((a, b) => 
-        Math.abs(b.price_change_percentage_24h || 0) - Math.abs(a.price_change_percentage_24h || 0)
+      // 1. TOP 10 Blue Chips (BTC, ETH, BNB...)
+      const blueChips = allMarkets.slice(0, 10);
+
+      // 2. TOP 8 Moedas MAIS VOLÁTEIS (maior mudança absoluta 24h)
+      const highVolatility = [...allMarkets]
+        .sort((a, b) => 
+          Math.abs(b.price_change_percentage_24h || 0) - Math.abs(a.price_change_percentage_24h || 0)
+        )
+        .slice(0, 8);
+
+      // 3. TOP 5 Ganhadoras (mudança 7d > 20%)
+      const topGainers = [...allMarkets]
+        .filter(m => (m.price_change_percentage_7d || 0) > 20)
+        .sort((a, b) => (b.price_change_percentage_7d || 0) - (a.price_change_percentage_7d || 0))
+        .slice(0, 5);
+
+      // 4. Ganhadoras EXTREMAS (mudança 7d > 50%)
+      const { data: extremeGainers } = await supabase
+        .from('latest_markets')
+        .select(`
+          *,
+          coins!inner(id, symbol, name, image)
+        `)
+        .gte('price_change_percentage_7d', 50)
+        .order('price_change_percentage_7d', { ascending: false })
+        .limit(3);
+
+      // Combinar tudo e remover duplicatas
+      const combinedMarkets = [
+        ...blueChips,
+        ...highVolatility,
+        ...topGainers,
+        ...(extremeGainers || [])
+      ];
+
+      const selectedMarkets = combinedMarkets.filter((market, index, self) =>
+        index === self.findIndex(m => (m as any).coin_id === (market as any).coin_id)
       );
 
-      // Pegar as 20 mais estáveis (primeiras do ranking) + 10 mais voláteis
-      const stableCoins = markets.slice(0, 20);
-      const volatileCoins = sortedByVolatility.slice(0, 10);
-      
-      // Combinar e remover duplicatas
-      const selectedMarkets = [...stableCoins];
-      volatileCoins.forEach(coin => {
-        if (!selectedMarkets.find(m => (m as any).coins.id === (coin as any).coins.id)) {
-          selectedMarkets.push(coin);
-        }
-      });
-
-      console.log(`📊 Fetched ${selectedMarkets.length} coins for ${PLAN.toUpperCase()} plan (${stableCoins.length} stable + ${volatileCoins.length} volatile)`);
+      console.log(`📊 Fetched ${selectedMarkets.length} markets (Blue Chips: ${blueChips.length}, High Volatility: ${highVolatility.length}, Gainers: ${topGainers.length}, Extreme: ${extremeGainers?.length || 0})`);
 
       const predictions = [];
 
@@ -203,6 +224,14 @@ DADOS BÁSICOS:
 - Moeda: ${coin.name} (${coin.symbol})
 - Preço Atual: $${market.current_price}
 - Market Cap: $${market.market_cap?.toLocaleString()}
+
+${Math.abs(market.price_change_percentage_7d || 0) > 50 ? 
+  `⚠️ CONTEXTO ESPECIAL - ALTA VOLATILIDADE EXTREMA:
+   Esta moeda teve ${market.price_change_percentage_7d?.toFixed(0)}% de mudança em 7 dias!
+   - Se momentum positivo + RSI < 70: FORTE OPORTUNIDADE DE COMPRA (HOT)
+   - Se momentum negativo + RSI > 30: RISCO EXTREMO, considerar SELL
+   PRIORIZE AÇÕES AGRESSIVAS (buy/sell) neste caso.
+  ` : ''}
 
 REGRAS CRÍTICAS:
 1. **AÇÃO SUGERIDA PELOS INDICADORES: "${suggestedAction}"** - Use esta ação a menos que tenha uma razão técnica forte para mudar

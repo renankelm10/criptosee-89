@@ -7,6 +7,8 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import {
   TrendingUp,
   TrendingDown,
@@ -17,7 +19,8 @@ import {
   Activity,
   BarChart3,
   Gauge,
-  Zap
+  Zap,
+  ExternalLink
 } from "lucide-react";
 
 interface Prediction {
@@ -92,18 +95,26 @@ export const PredictionDetailDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div className={`p-3 rounded-lg ${getActionColor(prediction.action)}`}>
-              {getActionIcon(prediction.action)}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`p-3 rounded-lg ${getActionColor(prediction.action)}`}>
+                {getActionIcon(prediction.action)}
+              </div>
+              <div>
+                <DialogTitle className="text-2xl font-bold">
+                  {prediction.coin_id.toUpperCase()}
+                </DialogTitle>
+                <DialogDescription>
+                  Análise gerada em {new Date(prediction.created_at).toLocaleString('pt-BR')}
+                </DialogDescription>
+              </div>
             </div>
-            <div>
-              <DialogTitle className="text-2xl font-bold">
-                {prediction.coin_id.toUpperCase()}
-              </DialogTitle>
-              <DialogDescription>
-                Análise gerada em {new Date(prediction.created_at).toLocaleString('pt-BR')}
-              </DialogDescription>
-            </div>
+            <Link to={`/crypto/${prediction.coin_id}`}>
+              <Button variant="default" size="sm">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Ver Página Completa
+              </Button>
+            </Link>
           </div>
         </DialogHeader>
 

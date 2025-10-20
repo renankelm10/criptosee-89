@@ -77,19 +77,37 @@ export function classifyOpportunityLevel(
   return 'normal';
 }
 
-// Forçar distribuição de ações baseada em RSI
+// Forçar distribuição de ações baseada em RSI - LÓGICA AGRESSIVA
 export function determineAction(rsi: number, priceChange7d: number, planLevel: 'free' | 'basic' | 'premium'): string {
   // Free: sempre conservador
   if (planLevel === 'free') {
     return rsi < 30 || priceChange7d < -10 ? 'watch' : 'hold';
   }
   
-  // Basic e Premium: usar RSI de verdade
-  if (rsi < 30) return 'buy';    // Oversold
-  if (rsi > 70) return 'sell';   // Overbought
-  if (rsi < 45) return 'buy';    // Tendência de compra
-  if (rsi > 55) return 'hold';   // Tendência de manutenção
-  return 'watch';                // Neutro
+  // PREMIUM: DISTRIBUIÇÃO AGRESSIVA (40% BUY, 25% SELL, 20% HOLD, 15% WATCH)
+  if (planLevel === 'premium') {
+    // COMPRA FORTE (40% das vezes)
+    if (rsi < 35) return 'buy';
+    if (rsi < 45 && priceChange7d > 15) return 'buy';
+    if (rsi < 40 && priceChange7d > 10) return 'buy';
+    
+    // VENDA FORTE (25% das vezes)
+    if (rsi > 65) return 'sell';
+    if (rsi > 60 && priceChange7d < -15) return 'sell';
+    if (rsi > 70 && priceChange7d < -10) return 'sell';
+    
+    // HOLD (20%)
+    if (rsi >= 45 && rsi <= 55 && Math.abs(priceChange7d) < 10) return 'hold';
+    
+    // WATCH (15%)
+    return 'watch';
+  }
+  
+  // Basic: mais conservador
+  if (rsi < 30) return 'buy';
+  if (rsi > 70) return 'sell';
+  if (rsi >= 40 && rsi <= 60) return 'hold';
+  return 'watch';
 }
 
 // Calcular score de volatilidade

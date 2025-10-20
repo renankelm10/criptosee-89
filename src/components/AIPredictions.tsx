@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -18,7 +18,9 @@ import {
   Activity,
   Star,
   Clock,
-  Users
+  Users,
+  ExternalLink,
+  ChevronRight
 } from "lucide-react";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { PredictionHistory } from "./PredictionHistory";
@@ -455,8 +457,8 @@ export const AIPredictions = () => {
           <div className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredPredictions.map((prediction) => (
+              <div key={prediction.id} className="relative pb-12">
                 <Card 
-                  key={prediction.id} 
                   className={`p-6 backdrop-blur-lg cursor-pointer transition-all duration-300 ${
                     prediction.opportunity_level === 'hot' 
                       ? 'border-2 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.4)] hover:shadow-[0_0_30px_rgba(234,179,8,0.6)] bg-gradient-to-br from-yellow-500/10 to-orange-500/10 animate-pulse' 
@@ -577,6 +579,24 @@ export const AIPredictions = () => {
                     {new Date(prediction.created_at).toLocaleString('pt-BR')}
                   </p>
                 </Card>
+                
+                {/* Link para detalhes da moeda */}
+                <Link 
+                  to={`/crypto/${prediction.coin_id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute bottom-0 left-0 right-0"
+                >
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full group hover:bg-primary hover:text-primary-foreground"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Ver Detalhes Completos
+                    <ChevronRight className="w-4 h-4 ml-auto group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </Link>
+              </div>
               ))}
           </div>
 

@@ -105,15 +105,32 @@ serve(async (req) => {
         console.log(`✅ Deleted old ${PLAN.toUpperCase()} predictions`);
       }
 
-      // 4. Buscar TOP 10 moedas mais estáveis (maior market cap)
-      const { data: markets, error: marketsError } = await supabase
+      // 4. Buscar TOP 8 moedas estáveis + 2 com oportunidade
+      const { data: stableMarkets } = await supabase
         .from('latest_markets')
         .select(`
           *,
           coins!inner(id, symbol, name, image)
         `)
         .order('market_cap_rank', { ascending: true })
-        .limit(10);
+        .limit(8);
+
+      // Adicionar 2 moedas com oportunidade moderada (10-25% ganho em 7d)
+      const { data: opportunityMarkets } = await supabase
+        .from('latest_markets')
+        .select(`
+          *,
+          coins!inner(id, symbol, name, image)
+        `)
+        .gte('price_change_percentage_7d', 10)
+        .lte('price_change_percentage_7d', 25)
+        .order('market_cap_rank', { ascending: true })
+        .limit(2);
+
+      const combinedMarkets = [...(stableMarkets || []), ...(opportunityMarkets || [])];
+      const markets = combinedMarkets.filter((market, index, self) =>
+        index === self.findIndex(m => (m as any).coin_id === (market as any).coin_id)
+      );
 
       if (marketsError) throw marketsError;
       if (!markets || markets.length === 0) {

@@ -105,8 +105,8 @@ serve(async (req) => {
         console.log(`✅ Deleted old ${PLAN.toUpperCase()} predictions`);
       }
 
-      // 4. Buscar TOP 10-40 moedas estabelecidas
-      const { data: markets, error: marketsError } = await supabase
+      // 4. Buscar moedas estabelecidas + algumas voláteis
+      const { data: stableMarkets } = await supabase
         .from('latest_markets')
         .select(`
           *,
@@ -114,7 +114,23 @@ serve(async (req) => {
         `)
         .order('market_cap_rank', { ascending: true })
         .range(10, 40)
-        .limit(30);
+        .limit(25);
+
+      // Adicionar 5 moedas voláteis para o plano básico
+      const { data: volatileMarkets } = await supabase
+        .from('latest_markets')
+        .select(`
+          *,
+          coins!inner(id, symbol, name, image)
+        `)
+        .gte('price_change_percentage_7d', 15)
+        .order('price_change_percentage_7d', { ascending: false })
+        .limit(5);
+
+      const combinedMarkets = [...(stableMarkets || []), ...(volatileMarkets || [])];
+      const markets = combinedMarkets.filter((market, index, self) =>
+        index === self.findIndex(m => (m as any).coin_id === (market as any).coin_id)
+      );
 
       if (marketsError) throw marketsError;
       if (!markets || markets.length === 0) {
