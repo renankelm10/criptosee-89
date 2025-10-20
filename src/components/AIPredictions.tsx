@@ -60,6 +60,7 @@ export const AIPredictions = () => {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [selectedPrediction, setSelectedPrediction] = useState<Prediction | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
 
   const fetchUserPlan = async () => {
@@ -80,18 +81,29 @@ export const AIPredictions = () => {
   const fetchPredictions = async () => {
     setLoading(true);
     try {
+      // Buscar palpites que o usuário tem acesso baseado no plano
+      // Premium vê todos, Basic vê basic+free, Free vê apenas free
+      const planOrder = { free: 1, basic: 2, premium: 3 };
+      const userPlanLevel = planOrder[userPlan];
+      
       const { data, error } = await supabase
         .from('ai_predictions')
         .select('*')
-        .eq('target_plan', userPlan)
         .gte('expires_at', new Date().toISOString())
         .order('confidence_level', { ascending: false });
 
       if (error) throw error;
-      setPredictions(data || []);
       
-      if (data && data.length > 0) {
-        setLastUpdate(new Date(data[0].created_at));
+      // Filtrar manualmente baseado no plano
+      const filteredData = (data || []).filter(pred => {
+        const predPlanLevel = planOrder[pred.target_plan];
+        return predPlanLevel <= userPlanLevel;
+      });
+      
+      setPredictions(filteredData);
+      
+      if (filteredData && filteredData.length > 0) {
+        setLastUpdate(new Date(filteredData[0].created_at));
       }
     } catch (error) {
       console.error('Error fetching predictions:', error);
@@ -102,6 +114,38 @@ export const AIPredictions = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generatePredictions = async () => {
+    setIsGenerating(true);
+    try {
+      const functionName = `generate-predictions-${userPlan}`;
+      
+      toast({
+        title: "Gerando palpites...",
+        description: "Isso pode levar alguns minutos.",
+      });
+
+      const { data, error } = await supabase.functions.invoke(functionName);
+
+      if (error) throw error;
+
+      toast({
+        title: "Palpites gerados!",
+        description: `${data.count || 0} novos palpites foram criados.`,
+      });
+
+      await fetchPredictions();
+    } catch (error: any) {
+      console.error('Error generating predictions:', error);
+      toast({
+        title: "Erro ao gerar palpites",
+        description: error.message || "Tente novamente mais tarde.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -199,6 +243,14 @@ export const AIPredictions = () => {
               </p>
             </div>
           </div>
+          <Button 
+            onClick={generatePredictions} 
+            disabled={isGenerating}
+            className="gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+            {isGenerating ? 'Gerando...' : 'Gerar Novos Palpites'}
+          </Button>
         </div>
 
         {/* Info Card */}
