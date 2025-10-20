@@ -166,9 +166,11 @@ export const AIPredictions = () => {
     }
   }, [userPlan]);
 
-  // Subscription em tempo real para novos palpites
+  // Subscription em tempo real para novos palpites (com debounce)
   useEffect(() => {
     if (!userPlan) return;
+
+    let toastTimeout: NodeJS.Timeout;
 
     const channel = supabase
       .channel('ai-predictions-changes')
@@ -181,17 +183,23 @@ export const AIPredictions = () => {
         },
         (payload) => {
           console.log('Novos palpites detectados!', payload);
-          fetchPredictions();
-          calculateNextUpdate();
-          toast({
-            title: "✨ Novos palpites disponíveis!",
-            description: "Os palpites foram atualizados automaticamente.",
-          });
+          
+          // Debounce: só atualizar após 3 segundos de inatividade
+          clearTimeout(toastTimeout);
+          toastTimeout = setTimeout(() => {
+            fetchPredictions();
+            calculateNextUpdate();
+            
+            // Atualizar silenciosamente sem toast
+            fetchPredictions();
+            calculateNextUpdate();
+          }, 3000);
         }
       )
       .subscribe();
 
     return () => {
+      clearTimeout(toastTimeout);
       supabase.removeChannel(channel);
     };
   }, [userPlan]);
@@ -349,11 +357,11 @@ export const AIPredictions = () => {
                         {pred.confidence_level}%
                       </Badge>
                     </div>
-                    {pred.technical_indicators?.rsi && (
+                    {pred.technical_indicators?.rsi !== undefined && (
                       <div className="space-y-2 text-xs">
                         <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
                           <span>RSI:</span>
-                          <Badge variant={(pred.technical_indicators.rsi || 50) < 30 ? "default" : "destructive"}>
+                          <Badge variant={pred.technical_indicators.rsi < 30 ? "default" : "destructive"}>
                             {pred.technical_indicators.rsi.toFixed(0)}
                           </Badge>
                         </div>
@@ -506,7 +514,7 @@ export const AIPredictions = () => {
                    </div>
 
                    {/* Technical Indicators */}
-                   {userPlan !== "free" && prediction.technical_indicators?.rsi && (
+                   {userPlan !== "free" && prediction.technical_indicators?.rsi !== undefined && (
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">RSI (14):</span>
@@ -514,9 +522,9 @@ export const AIPredictions = () => {
                           <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
                             <div 
                               className={`h-full ${
-                                (prediction.technical_indicators.rsi || 50) < 30 
+                                prediction.technical_indicators.rsi < 30 
                                   ? 'bg-green-500' 
-                                  : (prediction.technical_indicators.rsi || 50) > 70 
+                                  : prediction.technical_indicators.rsi > 70 
                                   ? 'bg-red-500' 
                                   : 'bg-yellow-500'
                               }`}
@@ -524,8 +532,8 @@ export const AIPredictions = () => {
                             />
                           </div>
                           <Badge variant={
-                            (prediction.technical_indicators.rsi || 50) < 30 ? "default" : 
-                            (prediction.technical_indicators.rsi || 50) > 70 ? "destructive" : "secondary"
+                            prediction.technical_indicators.rsi < 30 ? "default" : 
+                            prediction.technical_indicators.rsi > 70 ? "destructive" : "secondary"
                           } className="text-xs">
                             {prediction.technical_indicators.rsi.toFixed(0)}
                           </Badge>

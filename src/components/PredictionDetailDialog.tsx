@@ -187,28 +187,28 @@ export const PredictionDetailDialog = ({
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">RSI (14 períodos)</span>
                     <Badge variant={
-                      prediction.technical_indicators.rsi < 30 ? "default" : 
-                      prediction.technical_indicators.rsi > 70 ? "destructive" : "secondary"
+                      (prediction.technical_indicators?.rsi || 50) < 30 ? "default" : 
+                      (prediction.technical_indicators?.rsi || 50) > 70 ? "destructive" : "secondary"
                     }>
-                      {prediction.technical_indicators.rsi.toFixed(2)}
+                      {(prediction.technical_indicators?.rsi || 50).toFixed(2)}
                     </Badge>
                   </div>
                   <div className="h-3 bg-muted rounded-full overflow-hidden">
                     <div 
                       className={`h-full transition-all ${
-                        (prediction.technical_indicators.rsi || 50) < 30 
+                        (prediction.technical_indicators?.rsi || 50) < 30 
                           ? 'bg-green-500' 
-                          : (prediction.technical_indicators.rsi || 50) > 70 
+                          : (prediction.technical_indicators?.rsi || 50) > 70 
                           ? 'bg-red-500' 
                           : 'bg-yellow-500'
                       }`}
-                      style={{ width: `${prediction.technical_indicators.rsi || 50}%` }}
+                      style={{ width: `${prediction.technical_indicators?.rsi || 50}%` }}
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {(prediction.technical_indicators.rsi || 50) < 30 && '🟢 Oversold - Potencial oportunidade de compra'}
-                    {(prediction.technical_indicators.rsi || 50) > 70 && '🔴 Overbought - Potencial correção'}
-                    {(prediction.technical_indicators.rsi || 50) >= 30 && (prediction.technical_indicators.rsi || 50) <= 70 && '⚪ Zona neutra'}
+                    {(prediction.technical_indicators?.rsi || 50) < 30 && '🟢 Oversold - Potencial oportunidade de compra'}
+                    {(prediction.technical_indicators?.rsi || 50) > 70 && '🔴 Overbought - Potencial correção'}
+                    {(prediction.technical_indicators?.rsi || 50) >= 30 && (prediction.technical_indicators?.rsi || 50) <= 70 && '⚪ Zona neutra'}
                   </p>
                 </div>
 
@@ -233,8 +233,8 @@ export const PredictionDetailDialog = ({
                   </div>
                   <div className="p-3 bg-muted/50 rounded-lg">
                     <p className="text-xs text-muted-foreground mb-1">Mudança 24h</p>
-                    <Badge variant={(prediction.technical_indicators.priceChange24h || 0) > 0 ? "default" : "destructive"}>
-                      {prediction.technical_indicators.priceChange24h?.toFixed(2)}%
+                    <Badge variant={(prediction.technical_indicators?.priceChange24h || 0) > 0 ? "default" : "destructive"}>
+                      {(prediction.technical_indicators?.priceChange24h || 0).toFixed(2)}%
                     </Badge>
                   </div>
                 </div>
