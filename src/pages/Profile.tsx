@@ -110,10 +110,31 @@ export default function Profile() {
         .from('user_subscriptions')
         .select('plan')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (!error && data) {
+      if (error) {
+        console.error('Error fetching plan:', error);
+        return;
+      }
+
+      if (data) {
         setCurrentPlan(data.plan);
+      } else {
+        // Se não encontrar assinatura, criar uma com plano free
+        console.log('No subscription found, creating default free plan');
+        const { error: insertError } = await supabase
+          .from('user_subscriptions')
+          .insert({
+            user_id: user.id,
+            plan: 'free',
+            started_at: new Date().toISOString()
+          });
+
+        if (!insertError) {
+          setCurrentPlan('free');
+        } else {
+          console.error('Error creating default subscription:', insertError);
+        }
       }
     };
 
@@ -125,12 +146,23 @@ export default function Profile() {
     
     setIsUpdatingPlan(true);
     try {
+      // Usar UPSERT para garantir que o registro seja criado se não existir
       const { error } = await supabase
         .from('user_subscriptions')
-        .update({ plan: newPlan })
-        .eq('user_id', user.id);
+        .upsert(
+          { 
+            user_id: user.id, 
+            plan: newPlan,
+            started_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: 'user_id' }
+        );
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error details:', error);
+        throw error;
+      }
 
       setCurrentPlan(newPlan);
       toast({
@@ -138,9 +170,10 @@ export default function Profile() {
         description: `Seu plano foi alterado para ${newPlan === 'premium' ? 'Premium' : newPlan === 'basic' ? 'Básico' : 'Gratuito'}.`
       });
     } catch (error: any) {
+      console.error('Error updating plan:', error);
       toast({
         title: "Erro ao atualizar plano",
-        description: error.message,
+        description: error.message || "Não foi possível atualizar o plano.",
         variant: "destructive"
       });
     } finally {
