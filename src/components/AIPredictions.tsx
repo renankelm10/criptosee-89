@@ -60,7 +60,7 @@ export const AIPredictions = () => {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [selectedPrediction, setSelectedPrediction] = useState<Prediction | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [nextUpdate, setNextUpdate] = useState<Date | null>(null);
   const { toast } = useToast();
 
   const fetchUserPlan = async () => {
@@ -117,36 +117,17 @@ export const AIPredictions = () => {
     }
   };
 
-  const generatePredictions = async () => {
-    setIsGenerating(true);
-    try {
-      const functionName = `generate-predictions-${userPlan}`;
-      
-      toast({
-        title: "Gerando palpites...",
-        description: "Isso pode levar alguns minutos.",
-      });
-
-      const { data, error } = await supabase.functions.invoke(functionName);
-
-      if (error) throw error;
-
-      toast({
-        title: "Palpites gerados!",
-        description: `${data.count || 0} novos palpites foram criados.`,
-      });
-
-      await fetchPredictions();
-    } catch (error: any) {
-      console.error('Error generating predictions:', error);
-      toast({
-        title: "Erro ao gerar palpites",
-        description: error.message || "Tente novamente mais tarde.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsGenerating(false);
-    }
+  const calculateNextUpdate = () => {
+    const now = new Date();
+    const intervals = {
+      free: 2 * 60, // 2 horas em minutos
+      basic: 60, // 1 hora
+      premium: 30 // 30 minutos
+    };
+    
+    const intervalMinutes = intervals[userPlan];
+    const nextUpdateTime = new Date(now.getTime() + intervalMinutes * 60 * 1000);
+    setNextUpdate(nextUpdateTime);
   };
 
   const getNextUpdateTime = () => {
@@ -179,16 +160,38 @@ export const AIPredictions = () => {
   useEffect(() => {
     if (userPlan) {
       fetchPredictions();
+      calculateNextUpdate();
     }
   }, [userPlan]);
 
-  // Auto-refresh a cada minuto para atualizar o countdown
+  // Subscription em tempo real para novos palpites
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchPredictions();
-    }, 60000); // 1 minuto
+    if (!userPlan) return;
 
-    return () => clearInterval(interval);
+    const channel = supabase
+      .channel('ai-predictions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'ai_predictions'
+        },
+        (payload) => {
+          console.log('Novos palpites detectados!', payload);
+          fetchPredictions();
+          calculateNextUpdate();
+          toast({
+            title: "✨ Novos palpites disponíveis!",
+            description: "Os palpites foram atualizados automaticamente.",
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [userPlan]);
 
   const getActionColor = (action: string) => {
@@ -243,14 +246,6 @@ export const AIPredictions = () => {
               </p>
             </div>
           </div>
-          <Button 
-            onClick={generatePredictions} 
-            disabled={isGenerating}
-            className="gap-2"
-          >
-            <RefreshCw className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
-            {isGenerating ? 'Gerando...' : 'Gerar Novos Palpites'}
-          </Button>
         </div>
 
         {/* Info Card */}
