@@ -16,6 +16,7 @@ serve(async (req) => {
   const PLAN = 'basic';
   const TARGET_COUNT = 10;
   const EXPIRES_IN_HOURS = 1;
+  const PREP_TIME_MINUTES = 5; // Tempo de preparação antecipada
 
   try {
     console.log(`🚀 Starting ${PLAN.toUpperCase()} plan predictions generation`);
@@ -69,11 +70,14 @@ serve(async (req) => {
 
     try {
       // 2. Verificar quantos palpites válidos já existem
+      // Permitir regeneração se palpites vão expirar em menos de 10 minutos
+      const tenMinutesFromNow = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      
       const { count: existingCount } = await supabase
         .from('ai_predictions')
         .select('*', { count: 'exact', head: true })
         .eq('target_plan', PLAN)
-        .gte('expires_at', new Date().toISOString());
+        .gte('expires_at', tenMinutesFromNow);
 
       if (existingCount && existingCount >= TARGET_COUNT) {
         console.log(`⚠️ Already have ${existingCount} valid predictions, skipping generation`);
@@ -221,7 +225,8 @@ CRÍTICO: Retorne APENAS o JSON válido, sem texto adicional.`;
             timeframe: '24h',
             risk_score: riskScore,
             target_plan: PLAN,
-            expires_at: new Date(Date.now() + EXPIRES_IN_HOURS * 60 * 60 * 1000).toISOString(),
+            // Adicionar 5 minutos ao tempo de expiração para compensar a geração antecipada
+            expires_at: new Date(Date.now() + (EXPIRES_IN_HOURS * 60 + PREP_TIME_MINUTES) * 60 * 1000).toISOString(),
           };
 
           const { error: insertError } = await supabase
