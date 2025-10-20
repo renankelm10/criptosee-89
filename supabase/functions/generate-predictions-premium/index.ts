@@ -1,6 +1,16 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  calculateRSI,
+  detectVolumeSpike,
+  calculateAverageVolume,
+  classifyOpportunityLevel,
+  determineAction,
+  calculateVolatilityScore,
+  determineTrend,
+  determineMomentum
+} from "../_shared/technicalIndicators.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -141,35 +151,67 @@ serve(async (req) => {
 
       const predictions = [];
 
-      // 5. Gerar TARGET_COUNT palpites de todos os níveis de risco
+      // 5. Gerar TARGET_COUNT palpites com indicadores técnicos reais
       for (let i = 0; i < Math.min(TARGET_COUNT, selectedMarkets.length); i++) {
         const market = selectedMarkets[i];
         const coin = (market as any).coins;
 
+        // Buscar histórico de preços para calcular RSI
+        const { data: historyData } = await supabase
+          .from('markets_history')
+          .select('current_price, timestamp, total_volume')
+          .eq('coin_id', coin.id)
+          .order('timestamp', { ascending: false })
+          .limit(14);
+
+        // Calcular indicadores técnicos reais
+        const rsi = calculateRSI(historyData || []);
+        const avgVolume = calculateAverageVolume(historyData || []);
+        const volumeSpike = detectVolumeSpike(market.total_volume, avgVolume);
+        const volatility = calculateVolatilityScore(
+          market.price_change_percentage_24h || 0,
+          market.price_change_percentage_7d || 0
+        );
+        const trend = determineTrend(
+          market.price_change_percentage_24h || 0,
+          market.price_change_percentage_7d || 0
+        );
+        const momentum = determineMomentum(
+          market.price_change_percentage_24h || 0,
+          market.price_change_percentage_7d || 0,
+          volumeSpike
+        );
+
+        // Determinar action baseado em dados reais
+        const suggestedAction = determineAction(
+          rsi,
+          market.price_change_percentage_7d || 0,
+          'premium'
+        );
+
         const prompt = `Você é um analista de criptomoedas PREMIUM. Analise a seguinte moeda e forneça uma previsão COMPLETA E PROFUNDA para as próximas 24h:
 
-Moeda: ${coin.name} (${coin.symbol})
-Preço Atual: $${market.current_price}
-Market Cap: $${market.market_cap}
-Volume 24h: $${market.total_volume}
-Mudança 1h: ${market.price_change_percentage_1h?.toFixed(2)}%
-Mudança 24h: ${market.price_change_percentage_24h?.toFixed(2)}%
-Mudança 7d: ${market.price_change_percentage_7d?.toFixed(2)}%
-ATH: $${market.ath} (${market.ath_change_percentage?.toFixed(2)}%)
-ATL: $${market.atl} (${market.atl_change_percentage?.toFixed(2)}%)
+CONTEXTO TÉCNICO REAL CALCULADO:
+- RSI (14): ${rsi.toFixed(2)} ${rsi < 30 ? '🟢 OVERSOLD - FORTE OPORTUNIDADE DE COMPRA!' : rsi > 70 ? '🔴 OVERBOUGHT - RISCO DE CORREÇÃO!' : '⚪ NEUTRO'}
+- Volume 24h: $${market.total_volume?.toLocaleString()} ${volumeSpike ? '⚡ SPIKE DETECTADO (+50% do normal)!' : ''}
+- Volatilidade: ${volatility}
+- Tendência 7d: ${trend}
+- Momentum: ${momentum}
+- Mudança 7d: ${market.price_change_percentage_7d?.toFixed(2)}% ${Math.abs(market.price_change_percentage_7d || 0) > 15 ? '⚠️ MOVIMENTO EXTREMO!' : ''}
 
-IMPORTANTE: Esta análise é para o plano PREMIUM:
-- Use TODAS as ações disponíveis: "buy", "sell", "hold", "watch"
-- riskScore pode ser 1-10 (TODOS os níveis de risco)
-- confidenceLevel entre 70-95% (análise profunda e confiante)
-- reasoning deve ser detalhado e técnico
-- Considere oportunidades de alto risco/alto retorno quando aplicável
+DADOS BÁSICOS:
+- Moeda: ${coin.name} (${coin.symbol})
+- Preço Atual: $${market.current_price}
+- Market Cap: $${market.market_cap?.toLocaleString()}
 
-DISTRIBUIÇÃO DE RISK SCORE:
-- Moedas TOP 10 consolidadas (BTC, ETH, BNB): riskScore 1-3
-- Moedas TOP 20-50 estabelecidas: riskScore 2-5
-- Moedas de média cap com boa liquidez: riskScore 4-7
-- Moedas voláteis ou memecoins: riskScore 6-10
+REGRAS CRÍTICAS:
+1. **AÇÃO SUGERIDA PELOS INDICADORES: "${suggestedAction}"** - Use esta ação a menos que tenha uma razão técnica forte para mudar
+2. Se RSI < 30: OBRIGATÓRIO usar action "buy" (oportunidade de compra)
+3. Se RSI > 70: OBRIGATÓRIO usar action "sell" (risco de correção)
+4. Se volume spike + momentum positivo: PRIORIZAR action "buy"
+5. confidenceLevel: 75-95% para análises premium
+6. riskScore: 1-10 baseado em market cap e volatilidade
+7. reasoning: MENCIONAR os indicadores técnicos calculados (RSI, volume, tendência)
 
 Com base nesses dados, forneça uma análise em formato JSON:
 {
@@ -235,6 +277,14 @@ CRÍTICO: Retorne APENAS o JSON válido, sem texto adicional.`;
             continue;
           }
 
+          // Classificar nível de oportunidade
+          const opportunityLevel = classifyOpportunityLevel(
+            analysis.action,
+            rsi,
+            volumeSpike,
+            market.price_change_percentage_7d || 0
+          );
+
           const prediction = {
             coin_id: coin.id,
             action: analysis.action,
@@ -245,6 +295,16 @@ CRÍTICO: Retorne APENAS o JSON válido, sem texto adicional.`;
             timeframe: '24h',
             risk_score: analysis.riskScore || 5,
             target_plan: PLAN,
+            opportunity_level: opportunityLevel,
+            technical_indicators: {
+              rsi: rsi,
+              volumeSpike: volumeSpike,
+              volatility: volatility,
+              trend: trend,
+              momentum: momentum,
+              priceChange24h: market.price_change_percentage_24h,
+              priceChange7d: market.price_change_percentage_7d
+            },
             // Adicionar 5 minutos ao tempo de expiração para compensar a geração antecipada
             expires_at: new Date(Date.now() + (EXPIRES_IN_MINUTES + PREP_TIME_MINUTES) * 60 * 1000).toISOString(),
           };
@@ -256,7 +316,7 @@ CRÍTICO: Retorne APENAS o JSON válido, sem texto adicional.`;
           if (insertError) {
             console.error(`Failed to insert prediction for ${coin.symbol}:`, insertError);
           } else {
-            console.log(`✅ Prediction created for ${coin.symbol}: ${analysis.action} (${analysis.confidenceLevel}%)`);
+            console.log(`✅ Prediction created for ${coin.symbol}: ${analysis.action} (${analysis.confidenceLevel}%) [${opportunityLevel.toUpperCase()}] RSI:${rsi.toFixed(0)}`);
             predictions.push(prediction);
           }
         } catch (error) {

@@ -38,6 +38,8 @@ interface Prediction {
   risk_score: number;
   target_plan: "free" | "basic" | "premium";
   expires_at: string;
+  opportunity_level?: string;
+  technical_indicators?: any;
 }
 
 interface UserSubscription {
@@ -228,6 +230,10 @@ export const AIPredictions = () => {
     filter === "all" || p.action === filter
   );
 
+  // Separar oportunidades HOT
+  const hotOpportunities = predictions.filter(p => p.opportunity_level === 'hot');
+  const warmOpportunities = predictions.filter(p => p.opportunity_level === 'warm');
+
   if (loading) return <LoadingSpinner />;
 
   return (
@@ -302,6 +308,98 @@ export const AIPredictions = () => {
 
         <TabsContent value="predictions" className="space-y-6">
 
+          {/* 🔥 OPORTUNIDADES IMPERDÍVEIS */}
+          {hotOpportunities.length > 0 && (
+            <Card className="p-6 bg-gradient-to-br from-yellow-500/20 via-orange-500/20 to-red-500/20 border-2 border-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.3)] animate-pulse">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-full flex items-center justify-center shadow-lg animate-bounce">
+                  <Zap className="w-8 h-8 text-black" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                    🔥 {hotOpportunities.length} Oportunidades Imperdíveis
+                    <Badge className="bg-yellow-500 text-black animate-pulse">URGENTE</Badge>
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Ação recomendada com indicadores técnicos extremos!
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {hotOpportunities.map((pred) => (
+                  <Card 
+                    key={pred.id}
+                    className="p-4 cursor-pointer hover:scale-105 transition-all duration-300 bg-gradient-to-br from-background to-yellow-500/10 border-2 border-yellow-500/50 shadow-lg hover:shadow-yellow-500/50"
+                    onClick={() => {
+                      setSelectedPrediction(pred);
+                      setIsDialogOpen(true);
+                    }}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h4 className="font-bold text-lg text-foreground">{pred.coin_id.toUpperCase()}</h4>
+                        <div className={`flex items-center gap-2 mt-1 ${getActionColor(pred.action)}`}>
+                          {getActionIcon(pred.action)}
+                          <span className="font-bold uppercase text-sm">
+                            {getActionLabel(pred.action)}
+                          </span>
+                        </div>
+                      </div>
+                      <Badge className="bg-yellow-500 text-black font-bold">
+                        {pred.confidence_level}%
+                      </Badge>
+                    </div>
+                    {pred.technical_indicators?.rsi && (
+                      <div className="space-y-2 text-xs">
+                        <div className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                          <span>RSI:</span>
+                          <Badge variant={(pred.technical_indicators.rsi || 50) < 30 ? "default" : "destructive"}>
+                            {pred.technical_indicators.rsi.toFixed(0)}
+                          </Badge>
+                        </div>
+                        {pred.technical_indicators.volumeSpike && (
+                          <Badge className="w-full bg-orange-500 text-white">
+                            ⚡ Volume Spike Detectado!
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* 🌡️ BOAS OPORTUNIDADES */}
+          {warmOpportunities.length > 0 && (
+            <Card className="p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/50">
+              <div className="flex items-center gap-3 mb-4">
+                <Activity className="w-6 h-6 text-amber-500" />
+                <h3 className="text-lg font-bold text-foreground">
+                  🌡️ {warmOpportunities.length} Boas Oportunidades
+                </h3>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {warmOpportunities.slice(0, 4).map((pred) => (
+                  <Button
+                    key={pred.id}
+                    variant="outline"
+                    className="flex flex-col items-start h-auto p-3 border-amber-500/30 hover:border-amber-500"
+                    onClick={() => {
+                      setSelectedPrediction(pred);
+                      setIsDialogOpen(true);
+                    }}
+                  >
+                    <span className="font-bold text-xs">{pred.coin_id.toUpperCase()}</span>
+                    <span className={`text-xs ${getActionColor(pred.action)}`}>
+                      {getActionLabel(pred.action)}
+                    </span>
+                  </Button>
+                ))}
+              </div>
+            </Card>
+          )}
+
       {/* Plan Badge */}
       <div className="flex items-center gap-3">
         <Badge variant="outline" className="flex items-center gap-2">
@@ -351,12 +449,30 @@ export const AIPredictions = () => {
             {filteredPredictions.map((prediction) => (
                 <Card 
                   key={prediction.id} 
-                  className="p-6 backdrop-blur-lg border-border/50 cursor-pointer hover:border-primary/50 transition-colors"
+                  className={`p-6 backdrop-blur-lg cursor-pointer transition-all duration-300 ${
+                    prediction.opportunity_level === 'hot' 
+                      ? 'border-2 border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.4)] hover:shadow-[0_0_30px_rgba(234,179,8,0.6)] bg-gradient-to-br from-yellow-500/10 to-orange-500/10 animate-pulse' 
+                      : prediction.opportunity_level === 'warm'
+                      ? 'border border-amber-500/50 hover:border-amber-500 hover:shadow-lg'
+                      : 'border-border/50 hover:border-primary/50'
+                  }`}
                   onClick={() => {
                     setSelectedPrediction(prediction);
                     setIsDialogOpen(true);
                   }}
                 >
+
+                  {/* Opportunity Badge */}
+                  {prediction.opportunity_level === 'hot' && (
+                    <div className="absolute -top-3 -right-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-black px-3 py-1 rounded-full font-bold text-xs shadow-lg animate-bounce">
+                      🔥 IMPERDÍVEL!
+                    </div>
+                  )}
+                  {prediction.opportunity_level === 'warm' && (
+                    <div className="absolute -top-2 -right-2 bg-amber-500 text-white px-2 py-0.5 rounded-full font-bold text-xs">
+                      ⚡ Boa
+                    </div>
+                  )}
 
                   {/* Action Badge */}
                   <div className="flex items-center justify-between mb-4">
@@ -389,27 +505,49 @@ export const AIPredictions = () => {
                      </Badge>
                    </div>
 
-                   {/* Indicators */}
-                   {userPlan !== "free" && (
+                   {/* Technical Indicators */}
+                   {userPlan !== "free" && prediction.technical_indicators?.rsi && (
                     <div className="space-y-2 mb-4">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">RSI (14):</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full ${
+                                (prediction.technical_indicators.rsi || 50) < 30 
+                                  ? 'bg-green-500' 
+                                  : (prediction.technical_indicators.rsi || 50) > 70 
+                                  ? 'bg-red-500' 
+                                  : 'bg-yellow-500'
+                              }`}
+                              style={{ width: `${prediction.technical_indicators.rsi}%` }}
+                            />
+                          </div>
+                          <Badge variant={
+                            (prediction.technical_indicators.rsi || 50) < 30 ? "default" : 
+                            (prediction.technical_indicators.rsi || 50) > 70 ? "destructive" : "secondary"
+                          } className="text-xs">
+                            {prediction.technical_indicators.rsi.toFixed(0)}
+                          </Badge>
+                        </div>
+                      </div>
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">Volatilidade:</span>
                         <Badge variant="secondary" className="text-xs">
-                          {prediction.indicators?.volatility}
+                          {prediction.technical_indicators.volatility}
                         </Badge>
                       </div>
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">Tendência:</span>
                         <Badge variant="secondary" className="text-xs">
-                          {prediction.indicators?.trend}
+                          {prediction.technical_indicators.trend}
                         </Badge>
                       </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">Momentum:</span>
-                        <Badge variant="secondary" className="text-xs">
-                          {prediction.indicators?.momentum}
+                      {prediction.technical_indicators.volumeSpike && (
+                        <Badge className="w-full bg-orange-500 text-white text-xs">
+                          ⚡ Volume Spike!
                         </Badge>
-                      </div>
+                      )}
                     </div>
                    )}
 

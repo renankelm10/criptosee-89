@@ -16,7 +16,8 @@ import {
   Clock,
   Activity,
   BarChart3,
-  Gauge
+  Gauge,
+  Zap
 } from "lucide-react";
 
 interface Prediction {
@@ -32,6 +33,8 @@ interface Prediction {
   risk_score: number;
   target_plan: "free" | "basic" | "premium";
   expires_at: string;
+  opportunity_level?: string;
+  technical_indicators?: any;
 }
 
 interface PredictionDetailDialogProps {
@@ -169,41 +172,81 @@ export const PredictionDetailDialog = ({
             </div>
           </div>
 
-          {/* Indicators (Basic/Premium) */}
-          {userPlan !== "free" && prediction.indicators && (
+          {/* Technical Indicators (Basic/Premium) */}
+          {userPlan !== "free" && prediction.technical_indicators && (
             <>
               <Separator />
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <BarChart3 className="w-4 h-4" />
-                  <span className="text-sm font-medium">Indicadores Técnicos</span>
+                  <span className="text-sm font-medium">Indicadores Técnicos Calculados</span>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  {prediction.indicators.volatility && (
-                    <div className="p-3 bg-muted/50 rounded-lg">
-                      <p className="text-xs text-muted-foreground mb-1">Volatilidade</p>
-                      <Badge variant="secondary" className="text-sm">
-                        {prediction.indicators.volatility}
-                      </Badge>
-                    </div>
-                  )}
-                  {prediction.indicators.trend && (
-                    <div className="p-3 bg-muted/50 rounded-lg">
-                      <p className="text-xs text-muted-foreground mb-1">Tendência</p>
-                      <Badge variant="secondary" className="text-sm">
-                        {prediction.indicators.trend}
-                      </Badge>
-                    </div>
-                  )}
-                  {prediction.indicators.momentum && (
-                    <div className="p-3 bg-muted/50 rounded-lg">
-                      <p className="text-xs text-muted-foreground mb-1">Momentum</p>
-                      <Badge variant="secondary" className="text-sm">
-                        {prediction.indicators.momentum}
-                      </Badge>
-                    </div>
-                  )}
+                
+                {/* RSI com visualização */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">RSI (14 períodos)</span>
+                    <Badge variant={
+                      prediction.technical_indicators.rsi < 30 ? "default" : 
+                      prediction.technical_indicators.rsi > 70 ? "destructive" : "secondary"
+                    }>
+                      {prediction.technical_indicators.rsi.toFixed(2)}
+                    </Badge>
+                  </div>
+                  <div className="h-3 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all ${
+                        (prediction.technical_indicators.rsi || 50) < 30 
+                          ? 'bg-green-500' 
+                          : (prediction.technical_indicators.rsi || 50) > 70 
+                          ? 'bg-red-500' 
+                          : 'bg-yellow-500'
+                      }`}
+                      style={{ width: `${prediction.technical_indicators.rsi || 50}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {(prediction.technical_indicators.rsi || 50) < 30 && '🟢 Oversold - Potencial oportunidade de compra'}
+                    {(prediction.technical_indicators.rsi || 50) > 70 && '🔴 Overbought - Potencial correção'}
+                    {(prediction.technical_indicators.rsi || 50) >= 30 && (prediction.technical_indicators.rsi || 50) <= 70 && '⚪ Zona neutra'}
+                  </p>
                 </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Volatilidade</p>
+                    <Badge variant="secondary" className="text-sm">
+                      {prediction.technical_indicators.volatility}
+                    </Badge>
+                  </div>
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Tendência</p>
+                    <Badge variant="secondary" className="text-sm">
+                      {prediction.technical_indicators.trend}
+                    </Badge>
+                  </div>
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Momentum</p>
+                    <Badge variant="secondary" className="text-sm">
+                      {prediction.technical_indicators.momentum}
+                    </Badge>
+                  </div>
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground mb-1">Mudança 24h</p>
+                    <Badge variant={(prediction.technical_indicators.priceChange24h || 0) > 0 ? "default" : "destructive"}>
+                      {prediction.technical_indicators.priceChange24h?.toFixed(2)}%
+                    </Badge>
+                  </div>
+                </div>
+
+                {prediction.technical_indicators.volumeSpike && (
+                  <div className="p-3 bg-orange-500/10 border border-orange-500/50 rounded-lg">
+                    <p className="text-sm font-medium text-orange-500 flex items-center gap-2">
+                      <Zap className="w-4 h-4" />
+                      Volume Spike Detectado (+50% acima da média)
+                    </p>
+                  </div>
+                )}
               </div>
             </>
           )}

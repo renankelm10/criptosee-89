@@ -24,11 +24,13 @@ export type Database = {
           expires_at: string | null
           id: string
           indicators: Json | null
+          opportunity_level: string | null
           performance_score: number | null
           price_projection: number | null
           reasoning: string
           risk_score: number | null
           target_plan: Database["public"]["Enums"]["subscription_plan"]
+          technical_indicators: Json | null
           timeframe: string | null
         }
         Insert: {
@@ -40,11 +42,13 @@ export type Database = {
           expires_at?: string | null
           id?: string
           indicators?: Json | null
+          opportunity_level?: string | null
           performance_score?: number | null
           price_projection?: number | null
           reasoning: string
           risk_score?: number | null
           target_plan?: Database["public"]["Enums"]["subscription_plan"]
+          technical_indicators?: Json | null
           timeframe?: string | null
         }
         Update: {
@@ -56,11 +60,13 @@ export type Database = {
           expires_at?: string | null
           id?: string
           indicators?: Json | null
+          opportunity_level?: string | null
           performance_score?: number | null
           price_projection?: number | null
           reasoning?: string
           risk_score?: number | null
           target_plan?: Database["public"]["Enums"]["subscription_plan"]
+          technical_indicators?: Json | null
           timeframe?: string | null
         }
         Relationships: []
