@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { createChart, ColorType, IChartApi, ISeriesApi, CandlestickData, HistogramData } from "lightweight-charts";
+import { createChart, ColorType, CandlestickSeries, HistogramSeries } from "lightweight-charts";
 import { Button } from "@/components/ui/button";
 import { TrendingUp } from "lucide-react";
 
@@ -23,7 +23,7 @@ interface TradingViewChartProps {
 
 export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
+  const chartRef = useRef<any>(null);
   const candlestickSeriesRef = useRef<any>(null);
   const volumeSeriesRef = useRef<any>(null);
   
@@ -73,7 +73,7 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
     chartRef.current = chart;
 
     // Add candlestick series
-    const candlestickSeries = (chart as any).addCandlestickSeries({
+    const candlestickSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#10B981',
       downColor: '#EF4444',
       borderUpColor: '#10B981',
@@ -84,12 +84,18 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
     candlestickSeriesRef.current = candlestickSeries;
 
     // Add volume series
-    const volumeSeries = (chart as any).addHistogramSeries({
+    const volumeSeries = chart.addSeries(HistogramSeries, {
       color: '#6B7280',
       priceFormat: {
         type: 'volume',
       },
       priceScaleId: '',
+    });
+    volumeSeries.priceScale().applyOptions({
+      scaleMargins: {
+        top: 0.7,
+        bottom: 0,
+      },
     });
     volumeSeriesRef.current = volumeSeries;
 
