@@ -449,9 +449,24 @@ export type Database = {
         }
         Relationships: []
       }
+      market_health: {
+        Row: {
+          coins_with_history: number | null
+          last_backend_update: string | null
+          records_last_hour: number | null
+          total_coins: number | null
+          total_history_30d: number | null
+          total_markets: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       cleanup_expired_predictions: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      cleanup_old_market_history: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }

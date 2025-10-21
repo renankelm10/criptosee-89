@@ -35,11 +35,11 @@ export const useCrypto = () => {
     console.log('📡 Buscando dados do Supabase...');
     
     // Buscar dados do mercado ordenados por rank
-    const { data: markets, error: mErr } = await supabase
-      .from('latest_markets')
-      .select('*')
-      .order('market_cap_rank', { ascending: true })
-      .limit(500);
+      const { data: markets, error: mErr } = await supabase
+        .from('latest_markets')
+        .select('*')
+        .order('market_cap_rank', { ascending: true })
+        .limit(1000); // Aumentado para 1000 moedas
     
     if (mErr) {
       console.error('❌ Erro ao buscar latest_markets:', mErr.message);
@@ -63,7 +63,7 @@ export const useCrypto = () => {
             .from('latest_markets')
             .select('*')
             .order('market_cap_rank', { ascending: true })
-            .limit(500);
+            .limit(1000); // Aumentado para 1000 moedas
           if (mErr2) throw new Error(`Erro Supabase: ${mErr2.message}`);
           if (!marketsAfter || marketsAfter.length === 0) {
             throw new Error('Nenhum dado disponível no Supabase');
@@ -108,10 +108,29 @@ export const useCrypto = () => {
           total_volume: Number(m.total_volume) || 0,
         } as CryptoData;
       })
-      .filter(crypto => crypto.current_price > 0) // Filtrar apenas moedas com preço válido
-      .sort((a, b) => a.market_cap_rank - b.market_cap_rank); // Ordenar por rank
+      .filter(crypto => crypto.current_price > 0); // Filtrar apenas moedas com preço válido
 
-    console.log(`✅ ${merged.length} moedas processadas com sucesso`);
+    // VALIDAÇÃO E DEDUPLICAÇÃO
+    const uniqueMap = new Map<string, CryptoData>();
+    
+    merged.forEach(crypto => {
+      // Validar dados essenciais e evitar duplicatas
+      if (
+        crypto.current_price > 0 &&
+        crypto.market_cap > 0 &&
+        crypto.market_cap_rank > 0 &&
+        !uniqueMap.has(crypto.id)
+      ) {
+        uniqueMap.set(crypto.id, crypto);
+      } else if (uniqueMap.has(crypto.id)) {
+        console.warn(`⚠️ Duplicata ignorada no frontend: ${crypto.id}`);
+      }
+    });
+
+    const validCryptos = Array.from(uniqueMap.values())
+      .sort((a, b) => a.market_cap_rank - b.market_cap_rank);
+
+    console.log(`✅ ${validCryptos.length} moedas válidas e únicas processadas`);
 
     // Calcular dados globais
     const totalMarketCap = merged.reduce((acc, x) => acc + (x.market_cap || 0), 0);
@@ -126,7 +145,7 @@ export const useCrypto = () => {
       market_cap_percentage: { btc: dominance },
     };
 
-    return { cryptos: merged, globalData: global };
+    return { cryptos: validCryptos, globalData: global };
   };
 
   // Função principal para buscar e atualizar dados
@@ -180,9 +199,9 @@ export const useCrypto = () => {
     // Configurar intervalo para buscar dados a cada 30 segundos
     console.log('⏰ Configurando intervalo de 30 segundos...');
     intervalRef.current = setInterval(() => {
-      console.log('⏰ Intervalo ativado - buscando dados atualizados');
+      console.log('⏰ Intervalo ativado (6 min) - buscando dados atualizados');
       fetchCryptos();
-    }, 30 * 1000); // 30 segundos
+    }, 6 * 60 * 1000); // 6 minutos = 360 segundos
     
     // Limpar no unmount
     return () => {
