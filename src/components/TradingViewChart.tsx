@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { createChart, ColorType, CandlestickSeries, HistogramSeries } from "lightweight-charts";
 import { Button } from "@/components/ui/button";
 import { TrendingUp } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface OHLCData {
-  time: string;
+  time: number;
   open: number;
   high: number;
   low: number;
@@ -12,7 +13,7 @@ interface OHLCData {
 }
 
 interface VolumeData {
-  time: string;
+  time: number;
   value: number;
   color: string;
 }
@@ -27,9 +28,10 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
   const candlestickSeriesRef = useRef<any>(null);
   const volumeSeriesRef = useRef<any>(null);
   
-  const [timeframe, setTimeframe] = useState("7");
+  const [timeframe, setTimeframe] = useState("7d");
   const [loading, setLoading] = useState(true);
   const [currentOHLC, setCurrentOHLC] = useState({ open: 0, high: 0, low: 0, close: 0, volume: 0 });
+  const [hasData, setHasData] = useState(true);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -119,90 +121,61 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
   }, []);
 
   useEffect(() => {
-    const fetchOHLCData = async (retryCount = 0) => {
+    const fetchOHLCData = async () => {
       try {
         setLoading(true);
+        setHasData(true);
 
-        if (retryCount > 0) {
-          await new Promise(resolve => setTimeout(resolve, retryCount * 1500));
-        }
-
-        const response = await fetch(
-          `https://api.coingecko.com/api/v3/coins/${cryptoId}/ohlc?vs_currency=usd&days=${timeframe}`,
-          {
-            method: 'GET',
-            headers: {
-              'Accept': 'application/json',
-            },
-          }
-        );
-
-        if (response.status === 429) {
-          if (retryCount < 2) {
-            console.log(`OHLC API rate limited, retrying in ${(retryCount + 1) * 1.5} seconds...`);
-            return fetchOHLCData(retryCount + 1);
-          }
-          throw new Error('API temporariamente indisponível. Tente novamente em alguns minutos.');
-        }
-
-        if (!response.ok) {
-          throw new Error(`Erro ${response.status}: Falha ao buscar dados OHLC`);
-        }
-
-        const data = await response.json();
-
-        // Fetch volume data separately
-        const volumeResponse = await fetch(
-          `https://api.coingecko.com/api/v3/coins/${cryptoId}/market_chart?vs_currency=usd&days=${timeframe}&interval=daily`,
-          {
-            method: 'GET',
-            headers: {
-              'Accept': 'application/json',
-            },
-          }
-        );
-
-        let volumeData: any[] = [];
-        if (volumeResponse.ok) {
-          const volumeJson = await volumeResponse.json();
-          volumeData = volumeJson.total_volumes || [];
-        }
-
-        // Transform OHLC data
-        const ohlcData: OHLCData[] = data.map(([timestamp, open, high, low, close]: number[]) => {
-          const date = new Date(timestamp);
-          return {
-            time: date.toISOString().split('T')[0],
-            open,
-            high,
-            low,
-            close,
-          };
-        });
-
-        // Transform volume data
-        const volumeChartData: VolumeData[] = volumeData.map(([timestamp, volume]: number[], idx: number) => {
-          const date = new Date(timestamp);
-          const prevClose = idx > 0 ? ohlcData[idx - 1]?.close : ohlcData[0]?.open;
-          const currentClose = ohlcData[idx]?.close || prevClose;
-          const isGreen = currentClose >= prevClose;
+        // Call our Edge Function to get OHLC data from markets_history
+        const { data, error } = await supabase.functions.invoke('get-ohlc', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: undefined,
+        }).then(async (res) => {
+          if (res.error) throw res.error;
           
-          return {
-            time: date.toISOString().split('T')[0],
-            value: volume,
-            color: isGreen ? '#10B98166' : '#EF444466',
-          };
+          // Edge function invoked via GET with query params
+          const url = `https://khcuvryopmaemccrptlk.supabase.co/functions/v1/get-ohlc?coin_id=${cryptoId}&tf=${timeframe}`;
+          const response = await fetch(url, {
+            headers: {
+              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoY3V2cnlvcG1hZW1jY3JwdGxrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3MTg5NzgsImV4cCI6MjA3NjI5NDk3OH0.qKcmnV6bpKLq1OXz_5TuYymwg0HFoyrHY7OeebCrdeg',
+            },
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Error ${response.status}`);
+          }
+          
+          return { data: await response.json(), error: null };
         });
+
+        if (error) {
+          console.error('Error fetching OHLC:', error);
+          setHasData(false);
+          return;
+        }
+
+        const { ohlc, volume } = data;
+
+        if (!ohlc || ohlc.length === 0) {
+          console.log('No data available for this timeframe');
+          setHasData(false);
+          return;
+        }
+
+        console.log(`Received ${ohlc.length} OHLC candles`);
 
         // Update chart
         if (candlestickSeriesRef.current && volumeSeriesRef.current) {
-          candlestickSeriesRef.current.setData(ohlcData);
-          volumeSeriesRef.current.setData(volumeChartData);
+          candlestickSeriesRef.current.setData(ohlc);
+          volumeSeriesRef.current.setData(volume);
           
           // Set current OHLC
-          if (ohlcData.length > 0) {
-            const latest = ohlcData[ohlcData.length - 1];
-            const latestVolume = volumeChartData[volumeChartData.length - 1];
+          if (ohlc.length > 0) {
+            const latest = ohlc[ohlc.length - 1];
+            const latestVolume = volume[volume.length - 1];
             setCurrentOHLC({
               open: latest.open,
               high: latest.high,
@@ -219,7 +192,8 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
         }
 
       } catch (error) {
-        console.error('Erro ao buscar dados OHLC:', error);
+        console.error('Error fetching OHLC data:', error);
+        setHasData(false);
       } finally {
         setLoading(false);
       }
@@ -243,11 +217,11 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
   };
 
   const timeframes = [
-    { value: "1", label: "24h" },
-    { value: "7", label: "7d" },
-    { value: "30", label: "30d" },
-    { value: "90", label: "3m" },
-    { value: "365", label: "1a" }
+    { value: "24h", label: "24h" },
+    { value: "7d", label: "7d" },
+    { value: "30d", label: "30d" },
+    { value: "3m", label: "3m" },
+    { value: "1y", label: "1a" }
   ];
 
   return (
@@ -274,7 +248,7 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
       </div>
 
       {/* OHLC Legend */}
-      {!loading && (
+      {!loading && hasData && currentOHLC.open > 0 && (
         <div className="flex flex-wrap gap-4 text-sm px-2">
           <span className="text-muted-foreground">
             O: <strong className="text-foreground">{formatPrice(currentOHLC.open)}</strong>
@@ -291,6 +265,13 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
           <span className="text-muted-foreground">
             Vol: <strong className="text-foreground">{formatVolume(currentOHLC.volume)}</strong>
           </span>
+        </div>
+      )}
+
+      {/* No Data Message */}
+      {!loading && !hasData && (
+        <div className="text-center py-4 text-muted-foreground">
+          <p>Construindo histórico. Volte em alguns minutos.</p>
         </div>
       )}
 

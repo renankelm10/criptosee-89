@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.fetch-crypto-sentiment]
 verify_jwt = false
+
+[functions.get-ohlc]
+verify_jwt = false
