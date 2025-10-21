@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
-import { ArrowLeft, TrendingUp, TrendingDown, BarChart3 } from "lucide-react";
-import { CryptoPriceChart } from "@/components/CryptoPriceChart";
+import { ArrowLeft, TrendingUp, TrendingDown } from "lucide-react";
+import { TradingViewChart } from "@/components/TradingViewChart";
 
 import { CryptoMarketsTable } from "@/components/CryptoMarketsTable";
 import { CryptoSocialFeed } from "@/components/CryptoSocialFeed";
@@ -250,11 +250,7 @@ const CryptoDetail = () => {
           {/* Centro: Gráfico e Mercados */}
           <section className="space-y-6 xl:order-2">
             <Card className="p-6 bg-gradient-card border-border">
-              <div className="flex items-center gap-2 mb-6">
-                <BarChart3 className="w-5 h-5 text-primary" />
-                <h2 className="text-xl font-bold text-foreground">Gráfico de Preços</h2>
-              </div>
-              <CryptoPriceChart cryptoId={crypto.id} />
+              <TradingViewChart cryptoId={crypto.id} />
             </Card>
 
             <Card className="p-6 bg-gradient-card border-border">
