@@ -18,56 +18,128 @@ export type Database = {
         Row: {
           action: Database["public"]["Enums"]["ai_action"]
           actual_outcome: string | null
+          bitcoin_correlation: number | null
+          bollinger_position: string | null
           coin_id: string
           confidence_level: number | null
           created_at: string | null
+          ema_trend: string | null
           expires_at: string | null
           id: string
           indicators: Json | null
+          macd_signal: string | null
+          near_resistance: boolean | null
+          near_support: boolean | null
           opportunity_level: string | null
           performance_score: number | null
           price_projection: number | null
           reasoning: string
+          resistance_price: number | null
           risk_score: number | null
+          sentiment_score: number | null
+          support_price: number | null
           target_plan: Database["public"]["Enums"]["subscription_plan"]
           technical_indicators: Json | null
           timeframe: string | null
+          volume_analysis: string | null
         }
         Insert: {
           action: Database["public"]["Enums"]["ai_action"]
           actual_outcome?: string | null
+          bitcoin_correlation?: number | null
+          bollinger_position?: string | null
           coin_id: string
           confidence_level?: number | null
           created_at?: string | null
+          ema_trend?: string | null
           expires_at?: string | null
           id?: string
           indicators?: Json | null
+          macd_signal?: string | null
+          near_resistance?: boolean | null
+          near_support?: boolean | null
           opportunity_level?: string | null
           performance_score?: number | null
           price_projection?: number | null
           reasoning: string
+          resistance_price?: number | null
           risk_score?: number | null
+          sentiment_score?: number | null
+          support_price?: number | null
           target_plan?: Database["public"]["Enums"]["subscription_plan"]
           technical_indicators?: Json | null
           timeframe?: string | null
+          volume_analysis?: string | null
         }
         Update: {
           action?: Database["public"]["Enums"]["ai_action"]
           actual_outcome?: string | null
+          bitcoin_correlation?: number | null
+          bollinger_position?: string | null
           coin_id?: string
           confidence_level?: number | null
           created_at?: string | null
+          ema_trend?: string | null
           expires_at?: string | null
           id?: string
           indicators?: Json | null
+          macd_signal?: string | null
+          near_resistance?: boolean | null
+          near_support?: boolean | null
           opportunity_level?: string | null
           performance_score?: number | null
           price_projection?: number | null
           reasoning?: string
+          resistance_price?: number | null
           risk_score?: number | null
+          sentiment_score?: number | null
+          support_price?: number | null
           target_plan?: Database["public"]["Enums"]["subscription_plan"]
           technical_indicators?: Json | null
           timeframe?: string | null
+          volume_analysis?: string | null
+        }
+        Relationships: []
+      }
+      coin_sentiment: {
+        Row: {
+          coin_id: string
+          created_at: string | null
+          id: string
+          negative_mentions: number | null
+          neutral_mentions: number | null
+          positive_mentions: number | null
+          recent_news: Json | null
+          sentiment_score: number | null
+          sources: Json | null
+          timestamp: string | null
+          total_mentions: number | null
+        }
+        Insert: {
+          coin_id: string
+          created_at?: string | null
+          id?: string
+          negative_mentions?: number | null
+          neutral_mentions?: number | null
+          positive_mentions?: number | null
+          recent_news?: Json | null
+          sentiment_score?: number | null
+          sources?: Json | null
+          timestamp?: string | null
+          total_mentions?: number | null
+        }
+        Update: {
+          coin_id?: string
+          created_at?: string | null
+          id?: string
+          negative_mentions?: number | null
+          neutral_mentions?: number | null
+          positive_mentions?: number | null
+          recent_news?: Json | null
+          sentiment_score?: number | null
+          sources?: Json | null
+          timestamp?: string | null
+          total_mentions?: number | null
         }
         Relationships: []
       }

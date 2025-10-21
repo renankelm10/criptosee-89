@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.generate-predictions-premium]
 verify_jwt = false
+
+[functions.fetch-crypto-sentiment]
+verify_jwt = false

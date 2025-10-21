@@ -139,3 +139,122 @@ export function determineMomentum(priceChange24h: number, priceChange7d: number,
   if (priceChange24h < 0 || priceChange7d < 0) return 'Negativo';
   return 'Neutro';
 }
+
+// Calcular EMA (Exponential Moving Average)
+export function calculateEMA(prices: number[], period: number): number {
+  if (prices.length === 0) return 0;
+  if (prices.length < period) return prices[0];
+  
+  const k = 2 / (period + 1);
+  let ema = prices[0];
+  
+  for (let i = 1; i < Math.min(prices.length, period); i++) {
+    ema = (prices[i] * k) + (ema * (1 - k));
+  }
+  
+  return ema;
+}
+
+// Calcular MACD (Moving Average Convergence Divergence)
+export function calculateMACD(prices: number[]): { macd: number; signal: number; histogram: number } {
+  if (prices.length < 26) return { macd: 0, signal: 0, histogram: 0 };
+  
+  const ema12 = calculateEMA(prices.slice(0, 26), 12);
+  const ema26 = calculateEMA(prices.slice(0, 26), 26);
+  const macd = ema12 - ema26;
+  
+  // Signal line (EMA 9 do MACD)
+  const macdArray = [macd];
+  const signal = calculateEMA(macdArray, 9);
+  const histogram = macd - signal;
+  
+  return { 
+    macd: Math.round(macd * 100) / 100, 
+    signal: Math.round(signal * 100) / 100, 
+    histogram: Math.round(histogram * 100) / 100 
+  };
+}
+
+// Calcular Standard Deviation
+function calculateStandardDeviation(values: number[]): number {
+  if (values.length === 0) return 0;
+  const avg = values.reduce((a, b) => a + b, 0) / values.length;
+  const squareDiffs = values.map(value => Math.pow(value - avg, 2));
+  const avgSquareDiff = squareDiffs.reduce((a, b) => a + b, 0) / squareDiffs.length;
+  return Math.sqrt(avgSquareDiff);
+}
+
+// Calcular Bollinger Bands
+export function calculateBollingerBands(prices: number[]): { upper: number; middle: number; lower: number } {
+  if (prices.length < 20) {
+    const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+    return { upper: avg, middle: avg, lower: avg };
+  }
+  
+  const period = Math.min(20, prices.length);
+  const recentPrices = prices.slice(0, period);
+  const sma = recentPrices.reduce((a, b) => a + b, 0) / period;
+  const stdDev = calculateStandardDeviation(recentPrices);
+  
+  return {
+    upper: Math.round((sma + (2 * stdDev)) * 100) / 100,
+    middle: Math.round(sma * 100) / 100,
+    lower: Math.round((sma - (2 * stdDev)) * 100) / 100
+  };
+}
+
+// Detectar Suporte e Resistência
+export function detectSupportResistance(prices: number[], currentPrice: number) {
+  if (prices.length === 0) {
+    return {
+      resistance: currentPrice,
+      support: currentPrice,
+      distanceToResistance: 0,
+      distanceToSupport: 0,
+      nearResistance: false,
+      nearSupport: false
+    };
+  }
+  
+  const max = Math.max(...prices);
+  const min = Math.min(...prices);
+  
+  const distanceToResistance = ((max - currentPrice) / currentPrice) * 100;
+  const distanceToSupport = ((currentPrice - min) / currentPrice) * 100;
+  
+  return {
+    resistance: Math.round(max * 100) / 100,
+    support: Math.round(min * 100) / 100,
+    distanceToResistance: Math.round(distanceToResistance * 100) / 100,
+    distanceToSupport: Math.round(distanceToSupport * 100) / 100,
+    nearResistance: distanceToResistance < 5,
+    nearSupport: distanceToSupport < 5
+  };
+}
+
+// Calcular correlação de Pearson entre duas séries
+export function calculateCorrelation(series1: number[], series2: number[]): number {
+  const n = Math.min(series1.length, series2.length);
+  if (n < 2) return 0;
+  
+  const mean1 = series1.slice(0, n).reduce((a, b) => a + b, 0) / n;
+  const mean2 = series2.slice(0, n).reduce((a, b) => a + b, 0) / n;
+  
+  let numerator = 0;
+  let denominator1 = 0;
+  let denominator2 = 0;
+  
+  for (let i = 0; i < n; i++) {
+    const diff1 = series1[i] - mean1;
+    const diff2 = series2[i] - mean2;
+    numerator += diff1 * diff2;
+    denominator1 += diff1 * diff1;
+    denominator2 += diff2 * diff2;
+  }
+  
+  const denominator = Math.sqrt(denominator1 * denominator2);
+  if (denominator === 0) return 0;
+  
+  const correlation = numerator / denominator;
+  return Math.round(correlation * 100) / 100;
+}

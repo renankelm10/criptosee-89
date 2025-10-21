@@ -20,7 +20,11 @@ import {
   BarChart3,
   Gauge,
   Zap,
-  ExternalLink
+  ExternalLink,
+  Bitcoin,
+  MessageSquare,
+  TrendingUpDown,
+  Signal
 } from "lucide-react";
 
 interface Prediction {
@@ -258,6 +262,89 @@ export const PredictionDetailDialog = ({
                     </p>
                   </div>
                 )}
+              </div>
+            </>
+          )}
+
+          {/* Indicadores Avançados - Bitcoin, Sentimento, MACD */}
+          {userPlan === "premium" && (prediction as any).bitcoin_correlation !== undefined && (
+            <>
+              <Separator />
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <TrendingUpDown className="w-4 h-4" />
+                  <span className="text-sm font-medium">Análise Avançada</span>
+                </div>
+                <div className="space-y-3">
+                  {/* Correlação com Bitcoin */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Bitcoin className="w-4 h-4" />
+                      Correlação BTC
+                    </span>
+                    <Badge variant={
+                      (prediction as any).bitcoin_correlation > 0.7 ? "default" : 
+                      (prediction as any).bitcoin_correlation < 0.3 ? "secondary" : 
+                      "outline"
+                    }>
+                      {((prediction as any).bitcoin_correlation * 100).toFixed(0)}%
+                      {(prediction as any).bitcoin_correlation > 0.7 ? ' Alta' : 
+                       (prediction as any).bitcoin_correlation < 0.3 ? ' Baixa' : ' Média'}
+                    </Badge>
+                  </div>
+
+                  {/* Sentimento */}
+                  {(prediction as any).sentiment_score !== undefined && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4" />
+                        Sentimento
+                      </span>
+                      <Badge variant={
+                        (prediction as any).sentiment_score > 0.3 ? "default" : 
+                        (prediction as any).sentiment_score < -0.3 ? "destructive" : 
+                        "outline"
+                      }>
+                        {(prediction as any).sentiment_score > 0.3 ? '🟢 Positivo' : 
+                         (prediction as any).sentiment_score < -0.3 ? '🔴 Negativo' : 
+                         '⚪ Neutro'}
+                      </Badge>
+                    </div>
+                  )}
+
+                  {/* MACD Signal */}
+                  {(prediction as any).macd_signal && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground flex items-center gap-2">
+                        <Signal className="w-4 h-4" />
+                        MACD
+                      </span>
+                      <Badge variant={(prediction as any).macd_signal.includes('Bullish') ? "default" : "destructive"}>
+                        {(prediction as any).macd_signal}
+                      </Badge>
+                    </div>
+                  )}
+
+                  {/* Suporte e Resistência */}
+                  {(prediction as any).support_price && (prediction as any).resistance_price && (
+                    <div className="space-y-2 pt-2 border-t">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Suporte</span>
+                        <span className={`font-medium ${(prediction as any).near_support ? 'text-green-500' : ''}`}>
+                          ${(prediction as any).support_price.toFixed(2)}
+                          {(prediction as any).near_support && ' 🎯'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Resistência</span>
+                        <span className={`font-medium ${(prediction as any).near_resistance ? 'text-red-500' : ''}`}>
+                          ${(prediction as any).resistance_price.toFixed(2)}
+                          {(prediction as any).near_resistance && ' ⚠️'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           )}

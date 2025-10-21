@@ -9,7 +9,12 @@ import {
   determineAction,
   calculateVolatilityScore,
   determineTrend,
-  determineMomentum
+  determineMomentum,
+  calculateEMA,
+  calculateMACD,
+  calculateBollingerBands,
+  detectSupportResistance,
+  calculateCorrelation
 } from "../_shared/technicalIndicators.ts";
 
 const corsHeaders = {
@@ -170,22 +175,52 @@ serve(async (req) => {
 
       console.log(`📊 Fetched ${selectedMarkets.length} markets (Blue Chips: ${blueChips.length}, High Volatility: ${highVolatility.length}, Gainers: ${topGainers.length}, Extreme: ${extremeGainers?.length || 0})`);
 
+      // ========================================
+      // BUSCAR DADOS DO BITCOIN (CONTEXTO GERAL)
+      // ========================================
+      const { data: btcData } = await supabase
+        .from('latest_markets')
+        .select('*')
+        .eq('coin_id', 'bitcoin')
+        .single();
+
+      const { data: btcHistory } = await supabase
+        .from('markets_history')
+        .select('current_price, timestamp')
+        .eq('coin_id', 'bitcoin')
+        .order('timestamp', { ascending: false })
+        .limit(100);
+
+      const btcPrices = (btcHistory || []).map(h => h.current_price);
+      const btcRSI = calculateRSI(btcHistory || []);
+      const btcTrend = determineTrend(
+        btcData?.price_change_percentage_24h || 0,
+        btcData?.price_change_percentage_7d || 0
+      );
+
+      console.log(`Bitcoin context: RSI ${btcRSI.toFixed(2)}, Trend ${btcTrend}, 24h ${btcData?.price_change_percentage_24h?.toFixed(2)}%`);
+
       const predictions = [];
 
-      // 5. Gerar TARGET_COUNT palpites com indicadores técnicos reais
+      // 5. Gerar TARGET_COUNT palpites com indicadores técnicos AVANÇADOS
       for (let i = 0; i < Math.min(TARGET_COUNT, selectedMarkets.length); i++) {
         const market = selectedMarkets[i];
         const coin = (market as any).coins;
 
-        // Buscar histórico de preços para calcular RSI
+        // Buscar histórico COMPLETO (100 períodos para MACD e Bollinger)
         const { data: historyData } = await supabase
           .from('markets_history')
           .select('current_price, timestamp, total_volume')
           .eq('coin_id', coin.id)
           .order('timestamp', { ascending: false })
-          .limit(14);
+          .limit(100);
 
-        // Calcular indicadores técnicos reais
+        // ========================================
+        // CALCULAR INDICADORES TÉCNICOS AVANÇADOS
+        // ========================================
+        const prices = (historyData || []).map(h => h.current_price);
+        
+        // Indicadores básicos
         const rsi = calculateRSI(historyData || []);
         const avgVolume = calculateAverageVolume(historyData || []);
         const volumeSpike = detectVolumeSpike(market.total_volume, avgVolume);
@@ -203,6 +238,35 @@ serve(async (req) => {
           volumeSpike
         );
 
+        // Indicadores avançados
+        const macd = calculateMACD(prices);
+        const bollinger = calculateBollingerBands(prices);
+        const ema50 = calculateEMA(prices, 50);
+        const supportResistance = detectSupportResistance(prices, market.current_price || 0);
+        
+        // Correlação com Bitcoin
+        const coinPrices = prices.slice(0, Math.min(14, prices.length));
+        const btcPricesSliced = btcPrices.slice(0, Math.min(14, btcPrices.length));
+        const correlation = calculateCorrelation(coinPrices, btcPricesSliced);
+
+        // Buscar sentimento (se disponível)
+        const { data: sentimentData } = await supabase
+          .from('coin_sentiment')
+          .select('*')
+          .eq('coin_id', coin.id)
+          .order('timestamp', { ascending: false })
+          .limit(1)
+          .single();
+
+        const sentiment = sentimentData || {
+          sentiment_score: 0,
+          positive_mentions: 0,
+          negative_mentions: 0,
+          neutral_mentions: 0,
+          total_mentions: 0,
+          recent_news: []
+        };
+
         // Determinar action baseado em dados reais
         const suggestedAction = determineAction(
           rsi,
@@ -210,37 +274,59 @@ serve(async (req) => {
           'premium'
         );
 
-        const prompt = `Você é um analista de criptomoedas PREMIUM. Analise a seguinte moeda e forneça uma previsão COMPLETA E PROFUNDA para as próximas 24h:
+        console.log(`${coin.symbol}: RSI=${rsi.toFixed(2)}, MACD=${macd.histogram.toFixed(2)}, Correlation=${(correlation * 100).toFixed(0)}%, Sentiment=${(sentiment.sentiment_score || 0).toFixed(2)}`);
 
-CONTEXTO TÉCNICO REAL CALCULADO:
-- RSI (14): ${rsi.toFixed(2)} ${rsi < 30 ? '🟢 OVERSOLD - FORTE OPORTUNIDADE DE COMPRA!' : rsi > 70 ? '🔴 OVERBOUGHT - RISCO DE CORREÇÃO!' : '⚪ NEUTRO'}
-- Volume 24h: $${market.total_volume?.toLocaleString()} ${volumeSpike ? '⚡ SPIKE DETECTADO (+50% do normal)!' : ''}
-- Volatilidade: ${volatility}
-- Tendência 7d: ${trend}
-- Momentum: ${momentum}
-- Mudança 7d: ${market.price_change_percentage_7d?.toFixed(2)}% ${Math.abs(market.price_change_percentage_7d || 0) > 15 ? '⚠️ MOVIMENTO EXTREMO!' : ''}
+        // Preparar contexto enriquecido
+        const bollingerPosition = market.current_price! > bollinger.upper 
+          ? '🔴 ACIMA banda superior (overbought)' 
+          : market.current_price! < bollinger.lower 
+          ? '🟢 ABAIXO banda inferior (oversold)' 
+          : '⚪ Dentro das bandas';
 
-DADOS BÁSICOS:
-- Moeda: ${coin.name} (${coin.symbol})
-- Preço Atual: $${market.current_price}
-- Market Cap: $${market.market_cap?.toLocaleString()}
+        const emaTrend = market.current_price! > ema50 ? '🟢 Acima EMA50 (tendência alta)' : '🔴 Abaixo EMA50 (tendência baixa)';
+        const macdSignal = macd.histogram > 0 ? '🟢 Bullish' : '🔴 Bearish';
+        const correlationText = correlation > 0.7 ? '⚠️ ALTA correlação - segue Bitcoin' : correlation < 0.3 ? '✅ BAIXA correlação - movimento independente' : 'MÉDIA correlação';
+        const sentimentText = (sentiment.sentiment_score || 0) > 0.3 ? '🟢 POSITIVO' : (sentiment.sentiment_score || 0) < -0.3 ? '🔴 NEGATIVO' : '⚪ NEUTRO';
+        const btcContextWarning = btcTrend.includes('Baixa') && correlation > 0.7 ? '\n⚠️ AVISO: Bitcoin em queda forte + alta correlação = risco aumentado\n' : '';
 
-${Math.abs(market.price_change_percentage_7d || 0) > 50 ? 
-  `⚠️ CONTEXTO ESPECIAL - ALTA VOLATILIDADE EXTREMA:
-   Esta moeda teve ${market.price_change_percentage_7d?.toFixed(0)}% de mudança em 7 dias!
-   - Se momentum positivo + RSI < 70: FORTE OPORTUNIDADE DE COMPRA (HOT)
-   - Se momentum negativo + RSI > 30: RISCO EXTREMO, considerar SELL
-   PRIORIZE AÇÕES AGRESSIVAS (buy/sell) neste caso.
-  ` : ''}
+        const prompt = `Você é um analista quantitativo de criptomoedas. Analise ${coin.name} (${coin.symbol}) para as próximas 24h.
 
-REGRAS CRÍTICAS:
-1. **AÇÃO SUGERIDA PELOS INDICADORES: "${suggestedAction}"** - Use esta ação a menos que tenha uma razão técnica forte para mudar
-2. Se RSI < 30: OBRIGATÓRIO usar action "buy" (oportunidade de compra)
-3. Se RSI > 70: OBRIGATÓRIO usar action "sell" (risco de correção)
-4. Se volume spike + momentum positivo: PRIORIZAR action "buy"
-5. confidenceLevel: 75-95% para análises premium
-6. riskScore: 1-10 baseado em market cap e volatilidade
-7. reasoning: MENCIONAR os indicadores técnicos calculados (RSI, volume, tendência)
+${Math.abs(market.price_change_percentage_7d || 0) > 50 ? `⚠️ ATENÇÃO: ${market.price_change_percentage_7d?.toFixed(0)}% em 7 dias - EXTREMA VOLATILIDADE!` : ''}${btcContextWarning}
+═══════════════════════════════════════════
+📊 1. INDICADORES TÉCNICOS
+═══════════════════════════════════════════
+• RSI (14): ${rsi.toFixed(2)} ${rsi < 30 ? '🟢 OVERSOLD' : rsi > 70 ? '🔴 OVERBOUGHT' : '⚪ NEUTRO'}
+• MACD: ${macdSignal} (Histograma: ${macd.histogram.toFixed(2)})
+• Bollinger: ${bollingerPosition}
+• EMA 50: $${ema50.toFixed(2)} ${emaTrend}
+• Suporte: $${supportResistance.support.toFixed(2)} (${supportResistance.distanceToSupport.toFixed(1)}%)${supportResistance.nearSupport ? ' ⚠️ PRÓXIMO' : ''}
+• Resistência: $${supportResistance.resistance.toFixed(2)} (${supportResistance.distanceToResistance.toFixed(1)}%)${supportResistance.nearResistance ? ' ⚠️ PRÓXIMO' : ''}
+• Volume 24h: $${market.total_volume?.toLocaleString()} ${volumeSpike ? '⚡ SPIKE' : ''}
+• Volatilidade: ${volatility}
+• Tendência: ${trend}
+• Momentum: ${momentum}
+
+═══════════════════════════════════════════
+🌐 2. CONTEXTO BITCOIN
+═══════════════════════════════════════════
+• Bitcoin RSI: ${btcRSI.toFixed(2)}
+• Bitcoin Tendência: ${btcTrend}
+• Correlação: ${(correlation * 100).toFixed(0)}% ${correlationText}
+
+═══════════════════════════════════════════
+💬 3. SENTIMENTO
+═══════════════════════════════════════════
+• Sentimento: ${sentimentText} (${(sentiment.sentiment_score || 0).toFixed(2)})
+• Menções: ${sentiment.total_mentions || 0} (${sentiment.positive_mentions || 0}+ | ${sentiment.negative_mentions || 0}-)
+
+═══════════════════════════════════════════
+⚙️ REGRAS DE DECISÃO
+═══════════════════════════════════════════
+• RSI < 30 + próximo suporte + sentiment positivo → BUY
+• RSI > 70 + próximo resistência + sentiment negativo → SELL
+• BTC queda + correlação alta → WATCH
+• Volume spike + MACD bullish + sentiment positivo → BUY
+• Ação sugerida: "${suggestedAction}"
 
 Com base nesses dados, forneça uma análise em formato JSON:
 {
@@ -332,9 +418,24 @@ CRÍTICO: Retorne APENAS o JSON válido, sem texto adicional.`;
               trend: trend,
               momentum: momentum,
               priceChange24h: market.price_change_percentage_24h,
-              priceChange7d: market.price_change_percentage_7d
+              priceChange7d: market.price_change_percentage_7d,
+              macd: macd.histogram,
+              ema50,
+              bollinger_upper: bollinger.upper,
+              bollinger_lower: bollinger.lower
             },
-            // Adicionar 5 minutos ao tempo de expiração para compensar a geração antecipada
+            // Novos campos avançados
+            bitcoin_correlation: correlation,
+            sentiment_score: sentiment.sentiment_score || 0,
+            macd_signal: macdSignal,
+            bollinger_position: bollingerPosition,
+            ema_trend: emaTrend,
+            near_support: supportResistance.nearSupport,
+            near_resistance: supportResistance.nearResistance,
+            support_price: supportResistance.support,
+            resistance_price: supportResistance.resistance,
+            volume_analysis: volumeSpike ? 'spike_detected' : 'normal',
+            // Adicionar 5 minutos ao tempo de expiração
             expires_at: new Date(Date.now() + (EXPIRES_IN_MINUTES + PREP_TIME_MINUTES) * 60 * 1000).toISOString(),
           };
 
