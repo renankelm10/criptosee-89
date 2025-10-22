@@ -237,29 +237,8 @@ const CryptoDetail = () => {
       </div>
 
       <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr_360px] gap-6">
-          {/* Esquerda: Atualizações da internet (alocado) */}
-          <aside className="space-y-6 xl:order-3">
-            <Card className="p-6 bg-gradient-card border-border">
-              <h2 className="text-xl font-bold text-foreground mb-4">Atualizações</h2>
-              {/* Espaço reservado para agregador social; componente já existe */}
-              <CryptoSocialFeed coinId={crypto.id} />
-            </Card>
-          </aside>
-
-          {/* Centro: Gráfico e Mercados */}
-          <section className="space-y-6 xl:order-2">
-            <Card className="p-6 bg-gradient-card border-border">
-              <TradingViewChart cryptoId={crypto.id} />
-            </Card>
-
-            <Card className="p-6 bg-gradient-card border-border">
-              <h2 className="text-xl font-bold text-foreground mb-4">Mercados</h2>
-              <CryptoMarketsTable coinId={crypto.id} />
-            </Card>
-          </section>
-
-          {/* Direita: Métricas, Links e Sobre */}
+        <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr_320px] gap-6">
+          {/* Sidebar Esquerda: Métricas */}
           <aside className="space-y-6 xl:order-1">
             {/* Preço + Variações */}
             <Card className="p-6 bg-gradient-card border-border">
@@ -388,6 +367,26 @@ const CryptoDetail = () => {
                   />
                 </div>
               )}
+            </Card>
+          </aside>
+
+          {/* Centro: Gráfico e Mercados */}
+          <section className="space-y-6 xl:order-2">
+            <Card className="p-6 bg-gradient-card border-border">
+              <TradingViewChart cryptoId={crypto.id} />
+            </Card>
+
+            <Card className="p-6 bg-gradient-card border-border">
+              <h2 className="text-xl font-bold text-foreground mb-4">Mercados</h2>
+              <CryptoMarketsTable coinId={crypto.id} />
+            </Card>
+          </section>
+
+          {/* Direita: Feed Social */}
+          <aside className="space-y-6 xl:order-3">
+            <Card className="p-6 bg-gradient-card border-border">
+              <h2 className="text-xl font-bold text-foreground mb-4">Atualizações</h2>
+              <CryptoSocialFeed coinId={crypto.id} />
             </Card>
           </aside>
         </div>

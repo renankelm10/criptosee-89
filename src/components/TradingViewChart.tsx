@@ -36,6 +36,9 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
+    const isMobile = window.innerWidth < 768;
+    const chartHeight = isMobile ? 400 : 600;
+
     // Create chart
     const chart = createChart(chartContainerRef.current, {
       layout: {
@@ -69,7 +72,7 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
       rightPriceScale: {
         borderColor: '#374151',
       },
-      height: 500,
+      height: chartHeight,
     });
 
     chartRef.current = chart;
@@ -216,32 +219,40 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
   };
 
   const timeframes = [
-    { value: "24h", label: "24h" },
-    { value: "7d", label: "7d" },
-    { value: "30d", label: "30d" },
-    { value: "3m", label: "3m" },
-    { value: "1y", label: "1a" }
+    { value: "24h", label: "24h", available: true },
+    { value: "7d", label: "7d", available: true },
+    { value: "30d", label: "30d", available: false, eta: "~25 dias" },
+    { value: "3m", label: "3m", available: false, eta: "~85 dias" },
+    { value: "1y", label: "1a", available: false, eta: "~360 dias" }
   ];
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Header + Timeframe selector */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-2">
           <TrendingUp className="w-5 h-5 text-primary" />
           <h2 className="text-xl font-bold">Gráfico de Trading</h2>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {timeframes.map((tf) => (
-            <Button
-              key={tf.value}
-              variant={timeframe === tf.value ? "default" : "outline"}
-              size="sm"
-              onClick={() => setTimeframe(tf.value)}
-            >
-              {tf.label}
-            </Button>
+            <div key={tf.value} className="relative group">
+              <Button
+                variant={timeframe === tf.value ? "default" : "outline"}
+                size="sm"
+                onClick={() => tf.available && setTimeframe(tf.value)}
+                disabled={!tf.available}
+                className={!tf.available ? "opacity-50 cursor-not-allowed" : ""}
+              >
+                {tf.label}
+              </Button>
+              {!tf.available && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1 bg-popover text-popover-foreground text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-border">
+                  Disponível em {tf.eta}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </div>
@@ -269,8 +280,12 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
 
       {/* No Data Message */}
       {!loading && !hasData && (
-        <div className="text-center py-4 text-muted-foreground">
-          <p>Construindo histórico. Volte em alguns minutos.</p>
+        <div className="text-center py-12 text-muted-foreground">
+          <p className="text-lg font-semibold mb-2">📊 Construindo histórico de dados</p>
+          <p className="text-sm">
+            Gráficos de longo prazo (30d+) estarão disponíveis em ~25 dias.<br/>
+            Use <strong>24h</strong> ou <strong>7d</strong> por enquanto.
+          </p>
         </div>
       )}
 
