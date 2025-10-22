@@ -28,7 +28,7 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
   const candlestickSeriesRef = useRef<any>(null);
   const volumeSeriesRef = useRef<any>(null);
   
-  const [timeframe, setTimeframe] = useState("7d");
+  const [timeframe, setTimeframe] = useState("24h");
   const [loading, setLoading] = useState(true);
   const [currentOHLC, setCurrentOHLC] = useState({ open: 0, high: 0, low: 0, close: 0, volume: 0 });
   const [hasData, setHasData] = useState(true);
@@ -82,7 +82,7 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
       borderDownColor: '#EF4444',
       wickUpColor: '#10B981',
       wickDownColor: '#EF4444',
-    });
+    }) as any;
     candlestickSeriesRef.current = candlestickSeries;
 
     // Add volume series
@@ -92,7 +92,7 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
         type: 'volume',
       },
       priceScaleId: '',
-    });
+    }) as any;
     volumeSeries.priceScale().applyOptions({
       scaleMargins: {
         top: 0.7,
@@ -121,51 +121,31 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
   }, []);
 
   useEffect(() => {
-    const fetchOHLCData = async () => {
+    const fetchOHLCData = async (tf: string = timeframe): Promise<boolean> => {
       try {
         setLoading(true);
         setHasData(true);
 
-        // Call our Edge Function to get OHLC data from markets_history
-        const { data, error } = await supabase.functions.invoke('get-ohlc', {
-          method: 'GET',
+        // Direct fetch to Edge Function
+        const url = `https://khcuvryopmaemccrptlk.supabase.co/functions/v1/get-ohlc?coin_id=${encodeURIComponent(cryptoId)}&tf=${tf}`;
+        const response = await fetch(url, {
           headers: {
-            'Content-Type': 'application/json',
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoY3V2cnlvcG1hZW1jY3JwdGxrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3MTg5NzgsImV4cCI6MjA3NjI5NDk3OH0.qKcmnV6bpKLq1OXz_5TuYymwg0HFoyrHY7OeebCrdeg',
           },
-          body: undefined,
-        }).then(async (res) => {
-          if (res.error) throw res.error;
-          
-          // Edge function invoked via GET with query params
-          const url = `https://khcuvryopmaemccrptlk.supabase.co/functions/v1/get-ohlc?coin_id=${cryptoId}&tf=${timeframe}`;
-          const response = await fetch(url, {
-            headers: {
-              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoY3V2cnlvcG1hZW1jY3JwdGxrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3MTg5NzgsImV4cCI6MjA3NjI5NDk3OH0.qKcmnV6bpKLq1OXz_5TuYymwg0HFoyrHY7OeebCrdeg',
-            },
-          });
-          
-          if (!response.ok) {
-            throw new Error(`Error ${response.status}`);
-          }
-          
-          return { data: await response.json(), error: null };
         });
-
-        if (error) {
-          console.error('Error fetching OHLC:', error);
-          setHasData(false);
-          return;
+        
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}`);
         }
-
-        const { ohlc, volume } = data;
+        
+        const { ohlc, volume } = await response.json();
 
         if (!ohlc || ohlc.length === 0) {
-          console.log('No data available for this timeframe');
-          setHasData(false);
-          return;
+          console.log(`Sem candles para ${cryptoId}/${tf}`);
+          return false;
         }
 
-        console.log(`Received ${ohlc.length} OHLC candles`);
+        console.log(`Received ${ohlc.length} OHLC candles for ${cryptoId}/${tf}`);
 
         // Update chart
         if (candlestickSeriesRef.current && volumeSeriesRef.current) {
@@ -189,17 +169,36 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
           if (chartRef.current) {
             chartRef.current.timeScale().fitContent();
           }
+          
+          setHasData(true);
+          return true;
         }
 
+        return false;
       } catch (error) {
         console.error('Error fetching OHLC data:', error);
-        setHasData(false);
+        return false;
       } finally {
         setLoading(false);
       }
     };
 
-    fetchOHLCData();
+    const loadData = async () => {
+      const success = await fetchOHLCData(timeframe);
+      
+      // Fallback to 24h if no data for selected timeframe
+      if (!success && timeframe !== '24h') {
+        console.log(`Fallback: tentando 24h para ${cryptoId}`);
+        const fallbackSuccess = await fetchOHLCData('24h');
+        if (!fallbackSuccess) {
+          setHasData(false);
+        }
+      } else if (!success) {
+        setHasData(false);
+      }
+    };
+
+    loadData();
   }, [cryptoId, timeframe]);
 
   const formatPrice = (value: number) => {
