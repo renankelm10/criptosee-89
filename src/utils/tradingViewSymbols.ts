@@ -1,0 +1,80 @@
+// Mapa de IDs do CoinGecko para símbolos do TradingView
+const SYMBOL_MAP: Record<string, string> = {
+  'bitcoin': 'BINANCE:BTCUSDT',
+  'ethereum': 'BINANCE:ETHUSDT',
+  'binancecoin': 'BINANCE:BNBUSDT',
+  'solana': 'BINANCE:SOLUSDT',
+  'cardano': 'BINANCE:ADAUSDT',
+  'ripple': 'BINANCE:XRPUSDT',
+  'dogecoin': 'BINANCE:DOGEUSDT',
+  'polkadot': 'BINANCE:DOTUSDT',
+  'polygon': 'BINANCE:MATICUSDT',
+  'shiba-inu': 'BINANCE:SHIBUSDT',
+  'avalanche-2': 'BINANCE:AVAXUSDT',
+  'chainlink': 'BINANCE:LINKUSDT',
+  'uniswap': 'BINANCE:UNIUSDT',
+  'litecoin': 'BINANCE:LTCUSDT',
+  'cosmos': 'BINANCE:ATOMUSDT',
+  'algorand': 'BINANCE:ALGOUSDT',
+  'near': 'BINANCE:NEARUSDT',
+  'vechain': 'BINANCE:VETUSDT',
+  'filecoin': 'BINANCE:FILUSDT',
+  'tron': 'BINANCE:TRXUSDT',
+  'aptos': 'BINANCE:APTUSDT',
+  'optimism': 'BINANCE:OPUSDT',
+  'arbitrum': 'BINANCE:ARBUSDT',
+  'stellar': 'BINANCE:XLMUSDT',
+  'monero': 'BINANCE:XMRUSDT',
+  'ethereum-classic': 'BINANCE:ETCUSDT',
+  'hedera-hashgraph': 'BINANCE:HBARUSDT',
+  'internet-computer': 'BINANCE:ICPUSDT',
+  'quant-network': 'BINANCE:QNTUSDT',
+  'aave': 'BINANCE:AAVEUSDT',
+  'the-sandbox': 'BINANCE:SANDUSDT',
+  'decentraland': 'BINANCE:MANAUSDT',
+  'axie-infinity': 'BINANCE:AXSUSDT',
+  'flow': 'BINANCE:FLOWUSDT',
+  'elrond-erd-2': 'BINANCE:EGLDUSDT',
+  'theta-token': 'BINANCE:THETAUSDT',
+  'eos': 'BINANCE:EOSUSDT',
+  'tezos': 'BINANCE:XTZUSDT',
+  'bitcoin-cash': 'BINANCE:BCHUSDT',
+  'ftx-token': 'BINANCE:FTTUSDT',
+  'pancakeswap-token': 'BINANCE:CAKEUSDT',
+  'maker': 'BINANCE:MKRUSDT',
+  'curve-dao-token': 'BINANCE:CRVUSDT',
+  'sushi': 'BINANCE:SUSHIUSDT',
+  'compound-governance-token': 'BINANCE:COMPUSDT',
+  'yearn-finance': 'BINANCE:YFIUSDT',
+  'matic-network': 'BINANCE:MATICUSDT',
+  '1inch': 'BINANCE:1INCHUSDT',
+  'synthetix-network-token': 'BINANCE:SNXUSDT',
+  'enjincoin': 'BINANCE:ENJUSDT',
+  'gala': 'BINANCE:GALAUSDT',
+  'fantom': 'BINANCE:FTMUSDT',
+  'harmony': 'BINANCE:ONEUSDT',
+  'zilliqa': 'BINANCE:ZILUSDT',
+  'basic-attention-token': 'BINANCE:BATUSDT',
+  'dash': 'BINANCE:DASHUSDT',
+  'zcash': 'BINANCE:ZECUSDT',
+  'waves': 'BINANCE:WAVESUSDT',
+  'ontology': 'BINANCE:ONTUSDT',
+  'qtum': 'BINANCE:QTUMUSDT',
+  'ravencoin': 'BINANCE:RVNUSDT',
+  'icon': 'BINANCE:ICXUSDT',
+  'kucoin-shares': 'BINANCE:KCSUSDT',
+  'neo': 'BINANCE:NEOUSDT',
+  'iota': 'BINANCE:IOTAUSDT',
+};
+
+export function getTradingViewSymbol(cryptoId: string, symbol?: string): string {
+  // 1) Tentar no mapa
+  if (SYMBOL_MAP[cryptoId.toLowerCase()]) {
+    return SYMBOL_MAP[cryptoId.toLowerCase()];
+  }
+
+  // 2) Fallback: construir automaticamente
+  // Maioria das moedas: BINANCE:{SYMBOL}USDT
+  const ticker = (symbol || cryptoId).toUpperCase();
+  return `BINANCE:${ticker}USDT`;
+}

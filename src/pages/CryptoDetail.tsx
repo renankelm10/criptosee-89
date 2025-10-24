@@ -5,8 +5,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 import { ArrowLeft, TrendingUp, TrendingDown } from "lucide-react";
-import { TradingViewChart } from "@/components/TradingViewChart";
+import { TradingViewWidget } from "@/components/TradingViewWidget";
 import { CryptoPriceChart } from "@/components/CryptoPriceChart";
+import { getTradingViewSymbol } from "@/utils/tradingViewSymbols";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CryptoMarketsTable } from "@/components/CryptoMarketsTable";
 import { CryptoSocialFeed } from "@/components/CryptoSocialFeed";
@@ -374,18 +375,21 @@ const CryptoDetail = () => {
           {/* Centro: Gráfico e Mercados */}
           <section className="space-y-6 order-1 lg:order-1 xl:order-2 min-w-0">
             <Card className="p-4 bg-gradient-card border-border min-w-0">
-              <Tabs defaultValue="candlestick" className="w-full">
+              <Tabs defaultValue="trading" className="w-full">
                 <TabsList className="grid w-full max-w-sm grid-cols-2 mb-4">
-                  <TabsTrigger value="candlestick">
-                    📊 Candlestick
+                  <TabsTrigger value="trading">
+                    📊 Trading
                   </TabsTrigger>
                   <TabsTrigger value="historico">
-                    📈 Histórico/Log
+                    📈 Histórico
                   </TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="candlestick" className="mt-0">
-                  <TradingViewChart cryptoId={crypto.id} />
+                <TabsContent value="trading" className="mt-0">
+                  <TradingViewWidget 
+                    symbol={getTradingViewSymbol(crypto.id, crypto.symbol)} 
+                    cryptoId={crypto.id}
+                  />
                 </TabsContent>
                 
                 <TabsContent value="historico" className="mt-0">
