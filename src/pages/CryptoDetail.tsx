@@ -33,6 +33,7 @@ interface CryptoDetailData {
     circulating_supply?: number | null;
     total_supply?: number | null;
     max_supply?: number | null;
+    last_updated?: string;
   };
   description: { en: string };
   links: {
@@ -62,88 +63,61 @@ const CryptoDetail = () => {
       setLoading(true);
       setError(null);
 
-      // 1) Buscar fallback no Supabase primeiro para evitar tela de erro
-      let hasFallback = false;
       try {
         const [{ data: coin }, { data: market }] = await Promise.all([
           supabase.from('coins').select('id,name,symbol,image').eq('id', id).maybeSingle(),
           supabase
             .from('latest_markets')
-            .select('current_price,market_cap,market_cap_rank,total_volume,price_change_percentage_24h,price_change_percentage_7d,circulating_supply,total_supply,max_supply')
+            .select('current_price,market_cap,market_cap_rank,total_volume,price_change_percentage_24h,price_change_percentage_7d,price_change_percentage_30d,circulating_supply,total_supply,max_supply,last_updated')
             .eq('coin_id', id)
             .maybeSingle(),
         ]);
 
-        if (coin) {
-          const fallback: CryptoDetailData = {
-            id: coin.id,
-            name: coin.name,
-            symbol: coin.symbol,
-            image: { large: coin.image },
-            market_data: {
-              current_price: { usd: (market?.current_price as number) ?? 0 },
-              price_change_percentage_24h: (market?.price_change_percentage_24h as number) ?? 0,
-              price_change_percentage_7d: (market?.price_change_percentage_7d as number) ?? 0,
-              price_change_percentage_30d: 0,
-              market_cap: { usd: (market?.market_cap as number) ?? 0 },
-              total_volume: { usd: (market?.total_volume as number) ?? 0 },
-              market_cap_rank: (market?.market_cap_rank as number) ?? 0,
-              fully_diluted_valuation: null,
-              circulating_supply: (market?.circulating_supply as number) ?? null,
-              total_supply: (market?.total_supply as number) ?? null,
-              max_supply: (market?.max_supply as number) ?? null,
-            },
-            description: { en: '' },
-            links: { homepage: [], blockchain_site: [] },
-          };
-          if (!cancelled) {
-            setCrypto(fallback);
-            hasFallback = true;
-            setLoading(false); // já renderiza com dados locais
-          }
+        if (!coin || !market) {
+          throw new Error('Moeda não encontrada no banco de dados');
         }
-      } catch (e) {
-        console.warn('Falha ao carregar fallback do Supabase', e);
+
+        const cryptoData: CryptoDetailData = {
+          id: coin.id,
+          name: coin.name,
+          symbol: coin.symbol,
+          image: { large: coin.image },
+          market_data: {
+            current_price: { usd: market.current_price ?? 0 },
+            price_change_percentage_24h: market.price_change_percentage_24h ?? 0,
+            price_change_percentage_7d: market.price_change_percentage_7d ?? 0,
+            price_change_percentage_30d: market.price_change_percentage_30d ?? 0,
+            market_cap: { usd: market.market_cap ?? 0 },
+            total_volume: { usd: market.total_volume ?? 0 },
+            market_cap_rank: market.market_cap_rank ?? 0,
+            fully_diluted_valuation: null,
+            circulating_supply: market.circulating_supply ?? null,
+            total_supply: market.total_supply ?? null,
+            max_supply: market.max_supply ?? null,
+            last_updated: market.last_updated,
+          },
+          description: { en: '' },
+          links: { homepage: [], blockchain_site: [] },
+        };
+
+        if (!cancelled) {
+          setCrypto(cryptoData);
+          setLoading(false);
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Erro ao carregar dados';
+        if (!cancelled) {
+          setError(msg);
+          setLoading(false);
+        }
       }
-
-      // 2) Tentar buscar detalhes completos no CoinGecko em background
-      const fetchCoinGecko = async (retry = 0): Promise<void> => {
-        try {
-          if (retry > 0) await new Promise(r => setTimeout(r, (retry + 1) * 1500));
-          const response = await fetch(
-            `https://api.coingecko.com/api/v3/coins/${id}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`
-          );
-
-          if (response.status === 429) {
-            if (retry < 3) return fetchCoinGecko(retry + 1);
-            throw new Error('API temporariamente indisponível. Tente novamente mais tarde.');
-          }
-          if (!response.ok) {
-            if (response.status === 404) throw new Error('Criptomoeda não encontrada.');
-            throw new Error(`Erro ${response.status}: Falha ao buscar dados da criptomoeda`);
-          }
-          const data = await response.json();
-          if (!cancelled) setCrypto(data);
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : 'Erro desconhecido';
-          console.warn('Mantendo fallback (CoinGecko falhou):', msg);
-          if (!hasFallback && !cancelled) {
-            setError(msg);
-          }
-          if (!cancelled && hasFallback) {
-            toast({ title: 'Usando dados do Supabase', description: 'Não foi possível completar os detalhes agora.', variant: 'default' });
-          }
-        }
-      };
-
-      await fetchCoinGecko();
     };
 
     load();
     return () => {
       cancelled = true;
     };
-  }, [id, toast]);
+  }, [id]);
 
   const formatPrice = (price: number) => {
     if (price < 1) {
@@ -245,9 +219,19 @@ const CryptoDetail = () => {
             {/* Preço + Variações */}
             <Card className="p-6 bg-gradient-card border-border">
               <div className="text-sm text-muted-foreground mb-2">Preço Atual</div>
-              <div className="text-3xl font-bold text-foreground mb-4">
+              <div className="text-3xl font-bold text-foreground mb-2">
                 {formatPrice(crypto.market_data.current_price.usd)}
               </div>
+              {crypto.market_data.last_updated && (
+                <div className="text-xs text-muted-foreground mb-4">
+                  Atualizado: {new Date(crypto.market_data.last_updated).toLocaleString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </div>
+              )}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">24h</span>
