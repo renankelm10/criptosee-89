@@ -374,29 +374,31 @@ const CryptoDetail = () => {
 
           {/* Centro: Gráfico e Mercados */}
           <section className="space-y-6 order-1 lg:order-1 xl:order-2 min-w-0">
-            <Card className="p-4 bg-gradient-card border-border min-w-0">
+            <div className="bg-gradient-card border border-border rounded-lg overflow-hidden min-w-0">
               <Tabs defaultValue="trading" className="w-full">
-                <TabsList className="grid w-full max-w-sm grid-cols-2 mb-4">
-                  <TabsTrigger value="trading">
-                    📊 Trading
-                  </TabsTrigger>
-                  <TabsTrigger value="historico">
-                    📈 Histórico
-                  </TabsTrigger>
-                </TabsList>
+                <div className="px-4 pt-4">
+                  <TabsList className="grid w-full max-w-sm grid-cols-2">
+                    <TabsTrigger value="trading">
+                      📊 Trading
+                    </TabsTrigger>
+                    <TabsTrigger value="historico">
+                      📈 Histórico
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
                 
-                <TabsContent value="trading" className="mt-0">
+                <TabsContent value="trading" className="mt-0 p-0">
                   <TradingViewWidget 
                     symbol={getTradingViewSymbol(crypto.id, crypto.symbol)} 
                     cryptoId={crypto.id}
                   />
                 </TabsContent>
                 
-                <TabsContent value="historico" className="mt-0">
+                <TabsContent value="historico" className="mt-0 p-4">
                   <CryptoPriceChart cryptoId={crypto.id} />
                 </TabsContent>
               </Tabs>
-            </Card>
+            </div>
 
             <Card className="p-4 bg-gradient-card border-border">
               <h2 className="text-xl font-bold text-foreground mb-4">Mercados</h2>
