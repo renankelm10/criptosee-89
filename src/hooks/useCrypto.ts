@@ -186,6 +186,33 @@ export const useCrypto = () => {
             const freshResult = await fetchFromSupabase();
             setCryptos(freshResult.cryptos);
             setGlobalData(freshResult.globalData);
+
+            // Background backfill for stale coins
+            const staleCoins = freshResult.cryptos.filter(c => {
+              if (!c.last_updated) return true;
+              const lastUpdate = new Date(c.last_updated).getTime();
+              const minutesSinceUpdate = (Date.now() - lastUpdate) / (1000 * 60);
+              return minutesSinceUpdate > 12;
+            });
+
+            if (staleCoins.length > 0) {
+              console.log(`🔄 Backfilling ${staleCoins.length} stale coins in background...`);
+              const batchSize = 30;
+              for (let i = 0; i < staleCoins.length; i += batchSize) {
+                const batch = staleCoins.slice(i, i + batchSize);
+                const ids = batch.map(c => c.id);
+                
+                setTimeout(async () => {
+                  try {
+                    await supabase.functions.invoke('refresh-coin', { body: { ids } });
+                    console.log(`✅ Backfilled batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(staleCoins.length / batchSize)}`);
+                  } catch (err) {
+                    console.error('Error backfilling batch:', err);
+                  }
+                }, i * 500);
+              }
+            }
+
             isRefreshing.current = false;
             isFetchingRef.current = false;
             setLoading(false);

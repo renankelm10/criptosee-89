@@ -48,6 +48,7 @@ const CryptoDetail = () => {
   const [crypto, setCrypto] = useState<CryptoDetailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -103,6 +104,75 @@ const CryptoDetail = () => {
         if (!cancelled) {
           setCrypto(cryptoData);
           setLoading(false);
+
+          // Check if data is stale (older than 10 minutes)
+          if (market.last_updated) {
+            const lastUpdate = new Date(market.last_updated).getTime();
+            const now = Date.now();
+            const minutesSinceUpdate = (now - lastUpdate) / (1000 * 60);
+
+            if (minutesSinceUpdate > 10) {
+              console.log(`🔄 Data stale for ${id} (${minutesSinceUpdate.toFixed(1)} min old), refreshing...`);
+              setRefreshing(true);
+
+              try {
+                const { data: refreshData, error: refreshError } = await supabase.functions.invoke('refresh-coin', {
+                  body: { id },
+                });
+
+                if (refreshError) {
+                  console.error('Error refreshing coin:', refreshError);
+                } else {
+                  console.log('✅ Coin refreshed:', refreshData);
+                  
+                  // Refetch data after refresh
+                  await new Promise(resolve => setTimeout(resolve, 1000));
+                  const [{ data: newCoin }, { data: newMarket }] = await Promise.all([
+                    supabase.from('coins').select('id,name,symbol,image').eq('id', id).maybeSingle(),
+                    supabase
+                      .from('latest_markets')
+                      .select('current_price,market_cap,market_cap_rank,total_volume,price_change_percentage_24h,price_change_percentage_7d,price_change_percentage_30d,circulating_supply,total_supply,max_supply,last_updated')
+                      .eq('coin_id', id)
+                      .maybeSingle(),
+                  ]);
+
+                  if (newCoin && newMarket && !cancelled) {
+                    const updatedCryptoData: CryptoDetailData = {
+                      id: newCoin.id,
+                      name: newCoin.name,
+                      symbol: newCoin.symbol,
+                      image: { large: newCoin.image },
+                      market_data: {
+                        current_price: { usd: newMarket.current_price ?? 0 },
+                        price_change_percentage_24h: newMarket.price_change_percentage_24h ?? 0,
+                        price_change_percentage_7d: newMarket.price_change_percentage_7d ?? 0,
+                        price_change_percentage_30d: newMarket.price_change_percentage_30d ?? 0,
+                        market_cap: { usd: newMarket.market_cap ?? 0 },
+                        total_volume: { usd: newMarket.total_volume ?? 0 },
+                        market_cap_rank: newMarket.market_cap_rank ?? 0,
+                        fully_diluted_valuation: null,
+                        circulating_supply: newMarket.circulating_supply ?? null,
+                        total_supply: newMarket.total_supply ?? null,
+                        max_supply: newMarket.max_supply ?? null,
+                        last_updated: newMarket.last_updated,
+                      },
+                      description: { en: '' },
+                      links: { homepage: [], blockchain_site: [] },
+                    };
+                    setCrypto(updatedCryptoData);
+                    toast({
+                      title: "Dados atualizados",
+                      description: `${newCoin.name} foi atualizado com sucesso.`,
+                    });
+                  }
+                }
+              } catch (refreshErr) {
+                console.error('Error during refresh:', refreshErr);
+              } finally {
+                if (!cancelled) setRefreshing(false);
+              }
+            }
+          }
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Erro ao carregar dados';
@@ -117,7 +187,7 @@ const CryptoDetail = () => {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, toast]);
 
   const formatPrice = (price: number) => {
     if (price < 1) {
@@ -224,12 +294,16 @@ const CryptoDetail = () => {
               </div>
               {crypto.market_data.last_updated && (
                 <div className="text-xs text-muted-foreground mb-4">
-                  Atualizado: {new Date(crypto.market_data.last_updated).toLocaleString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
+                  {refreshing ? (
+                    <span className="text-primary">🔄 Atualizando dados...</span>
+                  ) : (
+                    <>Atualizado: {new Date(crypto.market_data.last_updated).toLocaleString('pt-BR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}</>
+                  )}
                 </div>
               )}
               <div className="space-y-2">
