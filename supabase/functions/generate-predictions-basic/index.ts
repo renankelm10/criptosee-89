@@ -106,7 +106,7 @@ serve(async (req) => {
       }
 
       // 4. Buscar moedas estabelecidas + algumas voláteis
-      const { data: stableMarkets } = await supabase
+      const { data: stableMarkets, error: stableError } = await supabase
         .from('latest_markets')
         .select(`
           *,
@@ -117,7 +117,7 @@ serve(async (req) => {
         .limit(25);
 
       // Adicionar 5 moedas voláteis para o plano básico
-      const { data: volatileMarkets } = await supabase
+      const { data: volatileMarkets, error: volatileError } = await supabase
         .from('latest_markets')
         .select(`
           *,
@@ -127,12 +127,19 @@ serve(async (req) => {
         .order('price_change_percentage_7d', { ascending: false })
         .limit(5);
 
+      if (stableError) {
+        console.error('Error fetching stable markets:', stableError);
+        throw stableError;
+      }
+      if (volatileError) {
+        console.error('Error fetching volatile markets:', volatileError);
+        throw volatileError;
+      }
+
       const combinedMarkets = [...(stableMarkets || []), ...(volatileMarkets || [])];
       const markets = combinedMarkets.filter((market, index, self) =>
         index === self.findIndex(m => (m as any).coin_id === (market as any).coin_id)
       );
-
-      if (marketsError) throw marketsError;
       if (!markets || markets.length === 0) {
         throw new Error('No markets data available');
       }
