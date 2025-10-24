@@ -388,10 +388,12 @@ const CryptoDetail = () => {
                 </div>
                 
                 <TabsContent value="trading" className="mt-0 p-0">
-                  <TradingViewWidget 
-                    symbol={getTradingViewSymbol(crypto.id, crypto.symbol)} 
-                    cryptoId={crypto.id}
-                  />
+                  <div className="w-full min-h-[420px] h-[60vh] sm:h-[65vh] md:h-[70vh] lg:h-[75vh]">
+                    <TradingViewWidget 
+                      symbol={getTradingViewSymbol(crypto.id, crypto.symbol)} 
+                      cryptoId={crypto.id}
+                    />
+                  </div>
                 </TabsContent>
                 
                 <TabsContent value="historico" className="mt-0 p-4">

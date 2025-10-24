@@ -53,9 +53,18 @@ export const TradingViewWidget = memo(({ symbol, cryptoId }: TradingViewWidgetPr
   }, [symbol, cryptoId]);
 
   return (
-    <div className="tradingview-widget-container w-full min-h-[700px]" ref={container}>
-      <div className="tradingview-widget-container__widget w-full h-full min-h-[700px]"></div>
-      <div className="text-xs text-muted-foreground text-center py-2">Powered by TradingView</div>
+    <div 
+      className="tradingview-widget-container w-full h-full" 
+      ref={container}
+      style={{ height: "100%", width: "100%" }}
+    >
+      <div 
+        className="tradingview-widget-container__widget"
+        style={{ height: "calc(100% - 32px)", width: "100%" }}
+      />
+      <div className="text-xs text-muted-foreground text-center py-2">
+        Powered by TradingView
+      </div>
     </div>
   );
 });
