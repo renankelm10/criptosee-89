@@ -53,7 +53,7 @@ export const TradingViewWidget = memo(({ symbol, cryptoId }: TradingViewWidgetPr
   }, [symbol, cryptoId]);
 
   return (
-    <div className="tradingview-widget-container w-full" ref={container} style={{ height: "600px" }}>
+    <div className="tradingview-widget-container w-full" ref={container} style={{ height: "800px" }}>
       <div className="tradingview-widget-container__widget" style={{ height: "calc(100% - 32px)", width: "100%" }}></div>
       <div className="text-xs text-muted-foreground text-center mt-2">Powered by TradingView</div>
     </div>
