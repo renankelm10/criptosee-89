@@ -40,9 +40,9 @@ const Index = () => {
     toast
   } = useToast();
 
-  // Timer para próxima atualização (30 segundos)
+  // Timer para próxima atualização (6 minutos)
   const countdownTimer = useCountdownTimer({
-    targetDurationMs: 1 * 30 * 1000 // 30 segundos/ 0.5 minutos
+    targetDurationMs: 6 * 60 * 1000 // 6 minutos
   });
 
   // Enable volatility notifications
