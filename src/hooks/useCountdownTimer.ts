@@ -1,20 +1,37 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface UseCountdownTimerProps {
   targetDurationMs: number; // Duração total em milissegundos
   onComplete?: () => void;
+  startTime?: number; // Timestamp de quando começou (opcional)
 }
 
-export const useCountdownTimer = ({ targetDurationMs, onComplete }: UseCountdownTimerProps) => {
+export const useCountdownTimer = ({ targetDurationMs, onComplete, startTime }: UseCountdownTimerProps) => {
   const [timeLeft, setTimeLeft] = useState(targetDurationMs);
   const [isRunning, setIsRunning] = useState(false);
+  const startTimeRef = useRef(startTime || Date.now());
+
+  // Update start time when it changes
+  useEffect(() => {
+    if (startTime) {
+      startTimeRef.current = startTime;
+      // Recalculate time left based on new start time
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, targetDurationMs - elapsed);
+      setTimeLeft(remaining);
+    }
+  }, [startTime, targetDurationMs]);
 
   const start = () => {
+    if (!startTime) {
+      startTimeRef.current = Date.now();
+    }
     setTimeLeft(targetDurationMs);
     setIsRunning(true);
   };
 
   const reset = () => {
+    startTimeRef.current = Date.now();
     setTimeLeft(targetDurationMs);
     setIsRunning(false);
   };
@@ -28,17 +45,17 @@ export const useCountdownTimer = ({ targetDurationMs, onComplete }: UseCountdown
     }
 
     const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1000) {
-          setIsRunning(false);
-          return 0;
-        }
-        return prev - 1000;
-      });
+      const elapsed = Date.now() - startTimeRef.current;
+      const remaining = Math.max(0, targetDurationMs - elapsed);
+      setTimeLeft(remaining);
+
+      if (remaining === 0) {
+        setIsRunning(false);
+      }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isRunning, timeLeft]); // Removido onComplete das dependências
+  }, [isRunning, timeLeft, targetDurationMs]);
 
   const formatTime = (ms: number): string => {
     const totalSeconds = Math.floor(ms / 1000);

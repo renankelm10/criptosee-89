@@ -107,6 +107,7 @@ serve(async (req: Request) => {
       atl: toNumber(c.atl),
       atl_change_percentage: toNumber(c.atl_change_percentage),
       atl_date: c.atl_date ? new Date(c.atl_date).toISOString() : null,
+      last_updated: c.last_updated ? new Date(c.last_updated).toISOString() : new Date().toISOString(),
     }));
 
     // Upsert coins
@@ -117,14 +118,15 @@ serve(async (req: Request) => {
 
     // Upsert latest_markets (chunks of 1000)
     const chunkSize = 1000;
-    console.log(`Upserting ${latestRows.length} market rows...`);
+    const updateTimestamp = new Date().toISOString();
+    console.log(`Upserting ${latestRows.length} market rows at ${updateTimestamp}...`);
     for (let i = 0; i < latestRows.length; i += chunkSize) {
       const chunk = latestRows.slice(i, i + chunkSize);
       console.log(`Upserting chunk ${Math.floor(i/chunkSize) + 1}...`);
       const { error: lmErr } = await supabase.from("latest_markets").upsert(chunk, { onConflict: "coin_id" });
       if (lmErr) throw new Error(`Upsert latest_markets failed: ${lmErr.message}`);
     }
-    console.log("Markets upserted successfully");
+    console.log(`✅ Markets upserted successfully - ${latestRows.length} rows updated at ${updateTimestamp}`);
 
     // Insert history (TODAS as moedas para acumular dados históricos)
     const historyRows = latestRows.map((r) => ({

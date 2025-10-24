@@ -24,6 +24,11 @@ const Index = () => {
     error,
     refetch
   } = useCrypto();
+
+  // Get last update time from the first crypto (Bitcoin or highest ranked)
+  const lastUpdateTime = cryptos[0]?.last_updated 
+    ? new Date(cryptos[0].last_updated).getTime() 
+    : Date.now();
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState<"all" | "gainers" | "losers" | "volatile">("volatile");
   const [volatilityLevel, setVolatilityLevel] = useState<"all" | "extrema" | "alta" | "media" | "baixa">("all");
@@ -40,9 +45,10 @@ const Index = () => {
     toast
   } = useToast();
 
-  // Timer para próxima atualização (6 minutos)
+  // Timer para próxima atualização (6 minutos a partir do last_updated)
   const countdownTimer = useCountdownTimer({
-    targetDurationMs: 6 * 60 * 1000 // 6 minutos
+    targetDurationMs: 6 * 60 * 1000, // 6 minutos
+    startTime: lastUpdateTime
   });
 
   // Enable volatility notifications

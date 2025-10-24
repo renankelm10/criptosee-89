@@ -12,6 +12,7 @@ interface CryptoData {
   image: string;
   market_cap: number;
   total_volume: number;
+  last_updated?: string;
 }
 
 interface GlobalData {
@@ -27,54 +28,54 @@ export const useCrypto = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const isRefreshing = useRef(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const isFetchingRef = useRef(false);
 
   // Função simplificada para buscar dados diretamente do Supabase
-  const fetchFromSupabase = async (): Promise<{ cryptos: CryptoData[]; globalData: GlobalData | null }> => {
+  const fetchFromSupabase = async (): Promise<{ cryptos: CryptoData[]; globalData: GlobalData | null; needsRefresh: boolean }> => {
     console.log('📡 Buscando dados do Supabase...');
     
     // Buscar dados do mercado ordenados por rank
-      const { data: markets, error: mErr } = await supabase
-        .from('latest_markets')
-        .select('*')
-        .order('market_cap_rank', { ascending: true })
-        .limit(1000); // Aumentado para 1000 moedas
+    const { data: markets, error: mErr } = await supabase
+      .from('latest_markets')
+      .select('*')
+      .order('market_cap_rank', { ascending: true })
+      .limit(1000);
     
     if (mErr) {
       console.error('❌ Erro ao buscar latest_markets:', mErr.message);
       throw new Error(`Erro Supabase: ${mErr.message}`);
     }
     
+    // Check if data needs refresh
+    let needsRefresh = false;
+    
     if (!markets || markets.length === 0) {
-      console.warn('⚠️ Nenhum dado encontrado em latest_markets — tentando atualizar via Edge Function');
-      // Tenta popular a base chamando a edge function
-      try {
-        const { data: refreshRes, error: refreshErr } = await supabase.functions.invoke('refresh-markets', {
-          body: { page: 1, per_page: 250 },
-        });
-        if (refreshErr) {
-          console.error('❌ Falha ao invocar refresh-markets:', refreshErr.message);
+      console.warn('⚠️ Nenhum dado encontrado em latest_markets');
+      needsRefresh = true;
+    } else {
+      // Check freshness of data using top coin (Bitcoin)
+      const topCoin = markets.find((m: any) => m.coin_id === 'bitcoin') || markets[0];
+      if (topCoin?.last_updated) {
+        const lastUpdated = new Date(topCoin.last_updated).getTime();
+        const now = Date.now();
+        const ageMinutes = (now - lastUpdated) / (1000 * 60);
+        
+        if (ageMinutes > 7) {
+          console.log(`⏰ Data is ${ageMinutes.toFixed(1)} minutes old, needs refresh`);
+          needsRefresh = true;
         } else {
-          console.log('✅ Edge function executada:', refreshRes);
-          // Aguarda brevemente e tenta buscar novamente
-          await new Promise((r) => setTimeout(r, 1500));
-          const { data: marketsAfter, error: mErr2 } = await supabase
-            .from('latest_markets')
-            .select('*')
-            .order('market_cap_rank', { ascending: true })
-            .limit(1000); // Aumentado para 1000 moedas
-          if (mErr2) throw new Error(`Erro Supabase: ${mErr2.message}`);
-          if (!marketsAfter || marketsAfter.length === 0) {
-            throw new Error('Nenhum dado disponível no Supabase');
-          }
-          // Substitui a variável local para seguir o fluxo
-          // @ts-expect-error reassignment para fluxo local
-          markets = marketsAfter;
+          console.log(`✅ Data is fresh (${ageMinutes.toFixed(1)} minutes old)`);
         }
-      } catch (e) {
-        throw e instanceof Error ? e : new Error('Falha ao inicializar dados');
+      } else {
+        console.warn('⚠️ No last_updated timestamp found');
+        needsRefresh = true;
       }
+    }
+    
+    if (!markets || markets.length === 0) {
+      return { cryptos: [], globalData: null, needsRefresh: true };
     }
 
     // Buscar informações das moedas
@@ -106,15 +107,15 @@ export const useCrypto = () => {
           image: c?.image || '',
           market_cap: Number(m.market_cap) || 0,
           total_volume: Number(m.total_volume) || 0,
+          last_updated: m.last_updated,
         } as CryptoData;
       })
-      .filter(crypto => crypto.current_price > 0); // Filtrar apenas moedas com preço válido
+      .filter(crypto => crypto.current_price > 0);
 
     // VALIDAÇÃO E DEDUPLICAÇÃO
     const uniqueMap = new Map<string, CryptoData>();
     
     merged.forEach(crypto => {
-      // Validar dados essenciais e evitar duplicatas
       if (
         crypto.current_price > 0 &&
         crypto.market_cap > 0 &&
@@ -145,7 +146,7 @@ export const useCrypto = () => {
       market_cap_percentage: { btc: dominance },
     };
 
-    return { cryptos: validCryptos, globalData: global };
+    return { cryptos: validCryptos, globalData: global, needsRefresh };
   };
 
   // Função principal para buscar e atualizar dados
@@ -165,7 +166,40 @@ export const useCrypto = () => {
 
       const result = await fetchFromSupabase();
       
-      // Atualizar estado imediatamente
+      // Auto-refresh if data is stale and not already refreshing
+      if (result.needsRefresh && !isRefreshing.current) {
+        console.log('🔄 Auto-refreshing stale data...');
+        isRefreshing.current = true;
+        
+        try {
+          const { error: invokeError } = await supabase.functions.invoke('refresh-markets', {
+            body: { pages: 4, per_page: 250 }
+          });
+          
+          if (invokeError) {
+            console.error('❌ Error invoking refresh-markets:', invokeError);
+          } else {
+            console.log('✅ refresh-markets completed, fetching updated data...');
+            // Wait a moment for data to be written
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            // Refetch after refresh
+            const freshResult = await fetchFromSupabase();
+            setCryptos(freshResult.cryptos);
+            setGlobalData(freshResult.globalData);
+            isRefreshing.current = false;
+            isFetchingRef.current = false;
+            setLoading(false);
+            setIsUpdating(false);
+            return;
+          }
+        } catch (refreshError) {
+          console.error('❌ Refresh error:', refreshError);
+        } finally {
+          isRefreshing.current = false;
+        }
+      }
+      
+      // Atualizar estado
       setCryptos(result.cryptos);
       setGlobalData(result.globalData);
       
@@ -176,7 +210,6 @@ export const useCrypto = () => {
       console.error('💥 Erro ao buscar dados:', errorMessage);
       setError(`Erro ao carregar dados: ${errorMessage}`);
       
-      // Em caso de erro, manter dados existentes se houver
       if (cryptos.length === 0) {
         console.log('📦 Nenhum dado disponível, aguardando próxima atualização...');
       }
@@ -196,12 +229,12 @@ export const useCrypto = () => {
     // Buscar dados inicial
     fetchCryptos();
 
-    // Configurar intervalo para buscar dados a cada 30 segundos
-    console.log('⏰ Configurando intervalo de 30 segundos...');
+    // Configurar intervalo para buscar dados a cada 6 minutos
+    console.log('⏰ Configurando intervalo de 6 minutos...');
     intervalRef.current = setInterval(() => {
       console.log('⏰ Intervalo ativado (6 min) - buscando dados atualizados');
       fetchCryptos();
-    }, 6 * 60 * 1000); // 6 minutos = 360 segundos
+    }, 6 * 60 * 1000); // 6 minutos
     
     // Limpar no unmount
     return () => {
