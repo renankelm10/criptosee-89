@@ -348,6 +348,55 @@ export type Database = {
           },
         ]
       }
+      prediction_votes: {
+        Row: {
+          created_at: string | null
+          id: string
+          prediction_id: string
+          updated_at: string | null
+          user_id: string
+          vote_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          prediction_id: string
+          updated_at?: string | null
+          user_id: string
+          vote_type: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          prediction_id?: string
+          updated_at?: string | null
+          user_id?: string
+          vote_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prediction_votes_prediction_id_fkey"
+            columns: ["prediction_id"]
+            isOneToOne: false
+            referencedRelation: "active_predictions_by_risk"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prediction_votes_prediction_id_fkey"
+            columns: ["prediction_id"]
+            isOneToOne: false
+            referencedRelation: "ai_predictions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prediction_votes_prediction_id_fkey"
+            columns: ["prediction_id"]
+            isOneToOne: false
+            referencedRelation: "prediction_performance_analysis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -460,16 +509,62 @@ export type Database = {
         }
         Relationships: []
       }
+      prediction_performance_analysis: {
+        Row: {
+          action: Database["public"]["Enums"]["ai_action"] | null
+          actual_outcome: string | null
+          ai_score: number | null
+          coin_id: string | null
+          community_score: number | null
+          confidence_level: number | null
+          confidence_level_category: string | null
+          consensus_category: string | null
+          correct_votes: number | null
+          created_at: string | null
+          expires_at: string | null
+          id: string | null
+          incorrect_votes: number | null
+          score_difference: number | null
+          total_votes: number | null
+        }
+        Relationships: []
+      }
+      prediction_vote_counts: {
+        Row: {
+          accuracy_percentage: number | null
+          correct_votes: number | null
+          incorrect_votes: number | null
+          prediction_id: string | null
+          total_votes: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prediction_votes_prediction_id_fkey"
+            columns: ["prediction_id"]
+            isOneToOne: false
+            referencedRelation: "active_predictions_by_risk"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prediction_votes_prediction_id_fkey"
+            columns: ["prediction_id"]
+            isOneToOne: false
+            referencedRelation: "ai_predictions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prediction_votes_prediction_id_fkey"
+            columns: ["prediction_id"]
+            isOneToOne: false
+            referencedRelation: "prediction_performance_analysis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
-      cleanup_expired_predictions: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      cleanup_old_market_history: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      cleanup_expired_predictions: { Args: never; Returns: undefined }
+      cleanup_old_market_history: { Args: never; Returns: undefined }
       get_user_plan: {
         Args: { user_uuid: string }
         Returns: Database["public"]["Enums"]["subscription_plan"]
