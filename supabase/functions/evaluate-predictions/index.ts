@@ -16,7 +16,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log('Starting prediction evaluation...');
+    console.log(`[EVALUATION STARTED] ${new Date().toISOString()}`);
 
     // Buscar predições que expiraram mas ainda não foram avaliadas
     const { data: predictions, error: fetchError } = await supabase
@@ -26,13 +26,14 @@ serve(async (req) => {
       .lt('expires_at', new Date().toISOString());
 
     if (fetchError) {
-      console.error('Error fetching predictions:', fetchError);
+      console.error('[ERROR] Error fetching predictions:', fetchError);
       throw fetchError;
     }
 
-    console.log(`Found ${predictions?.length || 0} predictions to evaluate`);
+    console.log(`[PREDICTIONS FOUND] Total to evaluate: ${predictions?.length || 0}`);
 
     if (!predictions || predictions.length === 0) {
+      console.log('[EVALUATION COMPLETED] No predictions to evaluate');
       return new Response(
         JSON.stringify({ message: 'No predictions to evaluate', evaluated: 0 }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -40,9 +41,12 @@ serve(async (req) => {
     }
 
     let evaluatedCount = 0;
+    let successCount = 0;
+    let errorCount = 0;
 
     for (const prediction of predictions) {
       try {
+        console.log(`[EVALUATING] ${prediction.coin_id} - Action: ${prediction.action}, Created: ${prediction.created_at}`);
         // Buscar dados de mercado históricos para comparação
         const createdAt = new Date(prediction.created_at);
         const expiresAt = new Date(prediction.expires_at);
@@ -57,7 +61,8 @@ serve(async (req) => {
           .limit(1);
 
         if (historyError || !historyData || historyData.length === 0) {
-          console.log(`No historical data for prediction ${prediction.id}`);
+          console.log(`[SKIP] No historical data for prediction ${prediction.id}`);
+          errorCount++;
           continue;
         }
 
@@ -125,18 +130,21 @@ serve(async (req) => {
           .eq('id', prediction.id);
 
         if (updateError) {
-          console.error(`Error updating prediction ${prediction.id}:`, updateError);
+          console.error(`[ERROR] Error updating prediction ${prediction.id}:`, updateError);
+          errorCount++;
         } else {
           evaluatedCount++;
-          console.log(`Evaluated prediction ${prediction.id}: ${actualOutcome} (Score: ${performanceScore})`);
+          successCount++;
+          console.log(`[SUCCESS] ${prediction.coin_id}: ${actualOutcome} (Score: ${performanceScore})`);
         }
 
       } catch (error) {
-        console.error(`Error processing prediction ${prediction.id}:`, error);
+        console.error(`[ERROR] Error processing prediction ${prediction.id}:`, error);
+        errorCount++;
       }
     }
 
-    console.log(`Successfully evaluated ${evaluatedCount} predictions`);
+    console.log(`[EVALUATION COMPLETED] Success: ${successCount}, Errors: ${errorCount}, Total: ${predictions.length}`);
 
     return new Response(
       JSON.stringify({ 

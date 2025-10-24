@@ -42,6 +42,8 @@ interface Prediction {
   expires_at: string;
   opportunity_level?: string;
   technical_indicators?: any;
+  actual_outcome?: string;
+  performance_score?: number;
 }
 
 interface UserSubscription {
@@ -65,6 +67,8 @@ export const AIPredictions = () => {
   const [selectedPrediction, setSelectedPrediction] = useState<Prediction | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [nextUpdate, setNextUpdate] = useState<Date | null>(null);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [recentlyEvaluated, setRecentlyEvaluated] = useState<Prediction[]>([]);
   const { toast } = useToast();
 
   const fetchUserPlan = async () => {
@@ -108,6 +112,24 @@ export const AIPredictions = () => {
       
       if (filteredData && filteredData.length > 0) {
         setLastUpdate(new Date(filteredData[0].created_at));
+      }
+
+      // Buscar predições avaliadas nas últimas 24h
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: recentData, error: recentError } = await supabase
+        .from('ai_predictions')
+        .select('*')
+        .not('actual_outcome', 'is', null)
+        .gte('expires_at', twentyFourHoursAgo)
+        .order('expires_at', { ascending: false })
+        .limit(5);
+
+      if (!recentError && recentData) {
+        const filteredRecent = recentData.filter(pred => {
+          const predPlanLevel = planOrder[pred.target_plan];
+          return predPlanLevel <= userPlanLevel;
+        });
+        setRecentlyEvaluated(filteredRecent);
       }
     } catch (error) {
       console.error('Error fetching predictions:', error);
@@ -198,6 +220,24 @@ export const AIPredictions = () => {
           }, 3000);
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'ai_predictions',
+        },
+        (payload) => {
+          // Verificar se foi avaliada (actual_outcome preenchido)
+          if (payload.new.actual_outcome && !payload.old.actual_outcome) {
+            toast({
+              title: "Predição Avaliada!",
+              description: `${payload.new.coin_id.toUpperCase()}: ${payload.new.actual_outcome}`,
+            });
+            fetchPredictions();
+          }
+        }
+      )
       .subscribe();
 
     return () => {
@@ -205,6 +245,40 @@ export const AIPredictions = () => {
       supabase.removeChannel(channel);
     };
   }, [userPlan]);
+
+  const handleEvaluateNow = async () => {
+    if (userPlan !== 'premium') {
+      toast({
+        title: "Recurso Premium",
+        description: "Apenas usuários Premium podem forçar avaliação manual.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsEvaluating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('evaluate-predictions');
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Avaliação Concluída",
+        description: `${data.evaluated || 0} predições foram avaliadas`,
+      });
+      
+      // Atualizar lista
+      fetchPredictions();
+    } catch (error: any) {
+      toast({
+        title: "Erro na Avaliação",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
 
   const getActionColor = (action: string) => {
     switch (action) {
@@ -262,7 +336,37 @@ export const AIPredictions = () => {
               </p>
             </div>
           </div>
+          <Button
+            onClick={handleEvaluateNow}
+            disabled={isEvaluating || userPlan !== 'premium'}
+            variant="outline"
+            className="gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${isEvaluating ? 'animate-spin' : ''}`} />
+            Avaliar Agora
+            {userPlan !== 'premium' && <Crown className="w-3 h-3" />}
+          </Button>
         </div>
+
+        {/* Status da Avaliação Automática */}
+        <Card className="p-4 border-blue-500/50 bg-blue-500/5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Activity className="w-5 h-5 text-blue-500" />
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Status da Avaliação Automática
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Predições são avaliadas automaticamente a cada <strong>1 hora</strong>
+                </p>
+              </div>
+            </div>
+            <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/50">
+              ✓ Ativo
+            </Badge>
+          </div>
+        </Card>
 
         {/* Info Card */}
         <Card className="p-4 bg-primary/5 border-primary/20">
@@ -317,6 +421,39 @@ export const AIPredictions = () => {
         </TabsList>
 
         <TabsContent value="predictions" className="space-y-6">
+
+          {/* 🌟 RECÉM AVALIADAS */}
+          {recentlyEvaluated.length > 0 && (
+            <Card className="p-4 bg-gradient-to-r from-green-500/10 to-blue-500/10 border border-green-500/50">
+              <div className="flex items-center gap-3 mb-4">
+                <Sparkles className="w-5 h-5 text-yellow-500" />
+                <h3 className="text-lg font-bold text-foreground">
+                  🌟 Recém Avaliadas (últimas 24h)
+                </h3>
+              </div>
+              <div className="space-y-2">
+                {recentlyEvaluated.map(pred => (
+                  <div key={pred.id} className="flex items-center justify-between p-3 bg-background rounded-lg border border-border/50">
+                    <div className="flex items-center gap-3">
+                      <Badge variant={pred.action === 'buy' ? 'default' : pred.action === 'sell' ? 'destructive' : 'secondary'}>
+                        {pred.coin_id.toUpperCase()}
+                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm ${getActionColor(pred.action)}`}>
+                          {getActionLabel(pred.action)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">→</span>
+                        <span className="text-sm text-foreground">{pred.actual_outcome}</span>
+                      </div>
+                    </div>
+                    <Badge variant={(pred as any).performance_score >= 70 ? 'default' : 'destructive'}>
+                      {(pred as any).performance_score}%
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
 
           {/* 🔥 OPORTUNIDADES IMPERDÍVEIS */}
           {hotOpportunities.length > 0 && (
@@ -471,6 +608,14 @@ export const AIPredictions = () => {
                     setIsDialogOpen(true);
                   }}
                 >
+                  {/* Badge de Aguardando Avaliação */}
+                  {prediction.expires_at && new Date(prediction.expires_at) < new Date() && (
+                    <div className="absolute top-2 right-2 z-10">
+                      <Badge variant="secondary" className="bg-blue-500/20 text-blue-500 border-blue-500/50">
+                        ⏳ Aguardando Avaliação
+                      </Badge>
+                    </div>
+                  )}
 
                   {/* Opportunity Badge */}
                   {prediction.opportunity_level === 'hot' && (
