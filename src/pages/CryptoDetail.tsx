@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 
 import { ArrowLeft, TrendingUp, TrendingDown } from "lucide-react";
 import { TradingViewChart } from "@/components/TradingViewChart";
-
+import { CryptoPriceChart } from "@/components/CryptoPriceChart";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CryptoMarketsTable } from "@/components/CryptoMarketsTable";
 import { CryptoSocialFeed } from "@/components/CryptoSocialFeed";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
@@ -236,10 +237,10 @@ const CryptoDetail = () => {
         </div>
       </div>
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr_320px] gap-6">
+      <main className="container mx-auto px-4 py-8 overflow-x-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] xl:grid-cols-[260px_minmax(0,1fr)_320px] gap-6">
           {/* Sidebar Esquerda: Métricas */}
-          <aside className="space-y-6 xl:order-1">
+          <aside className="space-y-6 order-2 lg:order-1 xl:order-1">
             {/* Preço + Variações */}
             <Card className="p-6 bg-gradient-card border-border">
               <div className="text-sm text-muted-foreground mb-2">Preço Atual</div>
@@ -371,19 +372,36 @@ const CryptoDetail = () => {
           </aside>
 
           {/* Centro: Gráfico e Mercados */}
-          <section className="space-y-6 xl:order-2">
-            <Card className="p-6 bg-gradient-card border-border">
-              <TradingViewChart cryptoId={crypto.id} />
+          <section className="space-y-6 order-1 lg:order-1 xl:order-2 min-w-0">
+            <Card className="p-4 bg-gradient-card border-border min-w-0">
+              <Tabs defaultValue="candlestick" className="w-full">
+                <TabsList className="grid w-full max-w-sm grid-cols-2 mb-4">
+                  <TabsTrigger value="candlestick">
+                    📊 Candlestick
+                  </TabsTrigger>
+                  <TabsTrigger value="historico">
+                    📈 Histórico/Log
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="candlestick" className="mt-0">
+                  <TradingViewChart cryptoId={crypto.id} />
+                </TabsContent>
+                
+                <TabsContent value="historico" className="mt-0">
+                  <CryptoPriceChart cryptoId={crypto.id} />
+                </TabsContent>
+              </Tabs>
             </Card>
 
-            <Card className="p-6 bg-gradient-card border-border">
+            <Card className="p-4 bg-gradient-card border-border">
               <h2 className="text-xl font-bold text-foreground mb-4">Mercados</h2>
               <CryptoMarketsTable coinId={crypto.id} />
             </Card>
           </section>
 
           {/* Direita: Feed Social */}
-          <aside className="space-y-6 xl:order-3">
+          <aside className="space-y-6 order-3 lg:order-2 xl:order-3">
             <Card className="p-6 bg-gradient-card border-border">
               <h2 className="text-xl font-bold text-foreground mb-4">Atualizações</h2>
               <CryptoSocialFeed coinId={crypto.id} />

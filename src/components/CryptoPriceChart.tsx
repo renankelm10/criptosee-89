@@ -128,7 +128,7 @@ export const CryptoPriceChart = ({ cryptoId }: CryptoPriceChartProps) => {
       </div>
 
       {/* Gráfico */}
-      <div className="h-[420px]">
+      <div className="h-[500px] md:h-[600px] min-w-0">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={priceData} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
             <defs>

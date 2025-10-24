@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { createChart, ColorType, CandlestickSeries, HistogramSeries } from "lightweight-charts";
+import { createChart, ColorType } from "lightweight-charts";
 import { Button } from "@/components/ui/button";
 import { TrendingUp } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 interface OHLCData {
   time: number;
@@ -78,24 +77,24 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
     chartRef.current = chart;
 
     // Add candlestick series
-    const candlestickSeries = chart.addSeries(CandlestickSeries, {
+    const candlestickSeries = (chart as any).addCandlestickSeries({
       upColor: '#10B981',
       downColor: '#EF4444',
       borderUpColor: '#10B981',
       borderDownColor: '#EF4444',
       wickUpColor: '#10B981',
       wickDownColor: '#EF4444',
-    }) as any;
+    });
     candlestickSeriesRef.current = candlestickSeries;
 
     // Add volume series
-    const volumeSeries = chart.addSeries(HistogramSeries, {
+    const volumeSeries = (chart as any).addHistogramSeries({
       color: '#6B7280',
       priceFormat: {
         type: 'volume',
       },
       priceScaleId: '',
-    }) as any;
+    });
     volumeSeries.priceScale().applyOptions({
       scaleMargins: {
         top: 0.7,
@@ -103,6 +102,9 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
       },
     });
     volumeSeriesRef.current = volumeSeries;
+
+    // Apply initial width
+    chart.applyOptions({ width: chartContainerRef.current.clientWidth });
 
     // Handle resize
     const handleResize = () => {
@@ -129,22 +131,53 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
         setLoading(true);
         setHasData(true);
 
-        // Direct fetch to Edge Function
-        const url = `https://khcuvryopmaemccrptlk.supabase.co/functions/v1/get-ohlc?coin_id=${encodeURIComponent(cryptoId)}&tf=${tf}`;
+        // Try Supabase Edge Function first
+        const url = `https://khcuvryopmaemccrptlk.supabase.co/functions/v1/get-ohlc?coin_id=${encodeURIComponent(cryptoId)}&timeframe=${tf}`;
         const response = await fetch(url, {
           headers: {
             'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoY3V2cnlvcG1hZW1jY3JwdGxrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3MTg5NzgsImV4cCI6MjA3NjI5NDk3OH0.qKcmnV6bpKLq1OXz_5TuYymwg0HFoyrHY7OeebCrdeg',
           },
         });
         
-        if (!response.ok) {
-          throw new Error(`Error ${response.status}`);
+        let ohlc = [];
+        let volume = [];
+
+        if (response.ok) {
+          const data = await response.json();
+          ohlc = data.ohlc || [];
+          volume = data.volume || [];
         }
-        
-        const { ohlc, volume } = await response.json();
+
+        // Fallback to CoinGecko if no data
+        if (!ohlc || ohlc.length === 0) {
+          console.log(`Sem dados no Supabase, tentando CoinGecko para ${cryptoId}/${tf}`);
+          const daysMap: Record<string, number> = { "24h": 1, "7d": 7, "30d": 30, "3m": 90, "1y": 365 };
+          const days = daysMap[tf] || 1;
+          
+          const cgResponse = await fetch(
+            `https://api.coingecko.com/api/v3/coins/${cryptoId}/ohlc?vs_currency=usd&days=${days}`
+          );
+
+          if (cgResponse.ok) {
+            const cgData = await cgResponse.json();
+            // CoinGecko OHLC format: [timestamp, open, high, low, close]
+            ohlc = cgData.map((candle: number[]) => ({
+              time: Math.floor(candle[0] / 1000),
+              open: candle[1],
+              high: candle[2],
+              low: candle[3],
+              close: candle[4],
+            }));
+            // No volume from CoinGecko OHLC, set empty
+            volume = ohlc.map((c: any) => ({ time: c.time, value: 0, color: '#6B7280' }));
+            console.log(`Fallback CoinGecko: ${ohlc.length} candles`);
+          } else {
+            console.log(`CoinGecko também falhou para ${cryptoId}/${tf}`);
+            return false;
+          }
+        }
 
         if (!ohlc || ohlc.length === 0) {
-          console.log(`Sem candles para ${cryptoId}/${tf}`);
           return false;
         }
 
@@ -188,15 +221,7 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
 
     const loadData = async () => {
       const success = await fetchOHLCData(timeframe);
-      
-      // Fallback to 24h if no data for selected timeframe
-      if (!success && timeframe !== '24h') {
-        console.log(`Fallback: tentando 24h para ${cryptoId}`);
-        const fallbackSuccess = await fetchOHLCData('24h');
-        if (!fallbackSuccess) {
-          setHasData(false);
-        }
-      } else if (!success) {
+      if (!success) {
         setHasData(false);
       }
     };
@@ -219,11 +244,11 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
   };
 
   const timeframes = [
-    { value: "24h", label: "24h", available: true },
-    { value: "7d", label: "7d", available: true },
-    { value: "30d", label: "30d", available: false, eta: "~25 dias" },
-    { value: "3m", label: "3m", available: false, eta: "~85 dias" },
-    { value: "1y", label: "1a", available: false, eta: "~360 dias" }
+    { value: "24h", label: "24h" },
+    { value: "7d", label: "7d" },
+    { value: "30d", label: "30d" },
+    { value: "3m", label: "3m" },
+    { value: "1y", label: "1a" }
   ];
 
   return (
@@ -237,22 +262,14 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
         
         <div className="flex gap-2 flex-wrap">
           {timeframes.map((tf) => (
-            <div key={tf.value} className="relative group">
-              <Button
-                variant={timeframe === tf.value ? "default" : "outline"}
-                size="sm"
-                onClick={() => tf.available && setTimeframe(tf.value)}
-                disabled={!tf.available}
-                className={!tf.available ? "opacity-50 cursor-not-allowed" : ""}
-              >
-                {tf.label}
-              </Button>
-              {!tf.available && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1 bg-popover text-popover-foreground text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 border border-border">
-                  Disponível em {tf.eta}
-                </div>
-              )}
-            </div>
+            <Button
+              key={tf.value}
+              variant={timeframe === tf.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTimeframe(tf.value)}
+            >
+              {tf.label}
+            </Button>
           ))}
         </div>
       </div>
@@ -281,10 +298,9 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
       {/* No Data Message */}
       {!loading && !hasData && (
         <div className="text-center py-12 text-muted-foreground">
-          <p className="text-lg font-semibold mb-2">📊 Construindo histórico de dados</p>
+          <p className="text-lg font-semibold mb-2">📊 Sem dados disponíveis</p>
           <p className="text-sm">
-            Gráficos de longo prazo (30d+) estarão disponíveis em ~25 dias.<br/>
-            Use <strong>24h</strong> ou <strong>7d</strong> por enquanto.
+            Não foi possível carregar dados para este período.
           </p>
         </div>
       )}
