@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { createChart, ColorType } from "lightweight-charts";
+import * as LightweightCharts from "lightweight-charts";
 import { Button } from "@/components/ui/button";
 import { TrendingUp } from "lucide-react";
 
@@ -39,9 +39,9 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
     const chartHeight = isMobile ? 400 : 600;
 
     // Create chart
-    const chart = createChart(chartContainerRef.current, {
+    const chart = LightweightCharts.createChart(chartContainerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: 'transparent' },
+        background: { type: LightweightCharts.ColorType.Solid, color: 'transparent' },
         textColor: '#9CA3AF',
       },
       grid: {
@@ -76,32 +76,36 @@ export const TradingViewChart = ({ cryptoId }: TradingViewChartProps) => {
 
     chartRef.current = chart;
 
-    // Add candlestick series
-    const candlestickSeries = (chart as any).addCandlestickSeries({
-      upColor: '#10B981',
-      downColor: '#EF4444',
-      borderUpColor: '#10B981',
-      borderDownColor: '#EF4444',
-      wickUpColor: '#10B981',
-      wickDownColor: '#EF4444',
-    });
-    candlestickSeriesRef.current = candlestickSeries;
+    // Add candlestick and volume series with guard for API availability
+    if (typeof (chart as any).addCandlestickSeries !== 'function') {
+      console.error('Lightweight Charts API mismatch: addCandlestickSeries not found on chart object.', chart);
+    } else {
+      const candlestickSeries = (chart as any).addCandlestickSeries({
+        upColor: '#10B981',
+        downColor: '#EF4444',
+        borderUpColor: '#10B981',
+        borderDownColor: '#EF4444',
+        wickUpColor: '#10B981',
+        wickDownColor: '#EF4444',
+      });
+      candlestickSeriesRef.current = candlestickSeries;
 
-    // Add volume series
-    const volumeSeries = (chart as any).addHistogramSeries({
-      color: '#6B7280',
-      priceFormat: {
-        type: 'volume',
-      },
-      priceScaleId: '',
-    });
-    volumeSeries.priceScale().applyOptions({
-      scaleMargins: {
-        top: 0.7,
-        bottom: 0,
-      },
-    });
-    volumeSeriesRef.current = volumeSeries;
+      // Add volume series
+      const volumeSeries = (chart as any).addHistogramSeries({
+        color: '#6B7280',
+        priceFormat: {
+          type: 'volume',
+        },
+        priceScaleId: '',
+      });
+      volumeSeries.priceScale().applyOptions({
+        scaleMargins: {
+          top: 0.7,
+          bottom: 0,
+        },
+      });
+      volumeSeriesRef.current = volumeSeries;
+    }
 
     // Apply initial width
     chart.applyOptions({ width: chartContainerRef.current.clientWidth });
