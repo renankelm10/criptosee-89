@@ -15,7 +15,7 @@ serve(async (req) => {
   const startTime = Date.now();
   const PLAN = 'free';
   const TARGET_COUNT = 5;
-  const EXPIRES_IN_HOURS = 2;
+  const EXPIRES_IN_HOURS = 24;
   const PREP_TIME_MINUTES = 5; // Tempo de preparação antecipada
 
   try {
@@ -273,7 +273,7 @@ CRÍTICO: Retorne APENAS o JSON válido, sem texto adicional.`;
   - Target count: ${TARGET_COUNT}
   - Generated predictions: ${predictions.length}
   - Duration: ${duration}ms
-  - Expires in: ${EXPIRES_IN_HOURS} hours
+  - Expires in: 24 hours
       `);
 
       return new Response(JSON.stringify({

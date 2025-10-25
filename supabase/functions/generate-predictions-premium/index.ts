@@ -30,7 +30,7 @@ serve(async (req) => {
   const startTime = Date.now();
   const PLAN = 'premium';
   const TARGET_COUNT = 25;
-  const EXPIRES_IN_MINUTES = 30;
+  const EXPIRES_IN_HOURS = 24;
   const PREP_TIME_MINUTES = 5; // Tempo de preparação antecipada
 
   try {
@@ -467,7 +467,7 @@ CRÍTICO: Retorne APENAS o JSON válido, sem texto adicional.`;
         success: true,
         count: predictions.length,
         plan: PLAN,
-        expires_in_minutes: EXPIRES_IN_MINUTES,
+        expires_in_hours: EXPIRES_IN_HOURS,
         duration_ms: duration
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
