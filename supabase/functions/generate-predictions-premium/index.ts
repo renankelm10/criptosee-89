@@ -435,8 +435,8 @@ CRÍTICO: Retorne APENAS o JSON válido, sem texto adicional.`;
             support_price: supportResistance.support,
             resistance_price: supportResistance.resistance,
             volume_analysis: volumeSpike ? 'spike_detected' : 'normal',
-            // Adicionar 5 minutos ao tempo de expiração
-            expires_at: new Date(Date.now() + (EXPIRES_IN_MINUTES + PREP_TIME_MINUTES) * 60 * 1000).toISOString(),
+            // Adicionar 5 minutos ao tempo de expiração para compensar a geração antecipada
+            expires_at: new Date(Date.now() + (EXPIRES_IN_HOURS * 60 + PREP_TIME_MINUTES) * 60 * 1000).toISOString(),
           };
 
           const { error: insertError } = await supabase
@@ -460,7 +460,7 @@ CRÍTICO: Retorne APENAS o JSON válido, sem texto adicional.`;
   - Target count: ${TARGET_COUNT}
   - Generated predictions: ${predictions.length}
   - Duration: ${duration}ms
-  - Expires in: ${EXPIRES_IN_MINUTES} minutes
+  - Expires in: 24 hours
       `);
 
       return new Response(JSON.stringify({
